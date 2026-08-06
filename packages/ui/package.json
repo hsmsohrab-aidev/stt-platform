@@ -1,0 +1,16 @@
+{
+  "name": "@stt/ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared UI primitives for STT (shadcn-based components move here over time)",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}

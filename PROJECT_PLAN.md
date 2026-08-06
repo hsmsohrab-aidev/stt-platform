@@ -760,17 +760,25 @@ PHASE 5 — Scale & Advanced (Ongoing)
 
 ### ✅ COMPLETED STEPS
 
-*(এখনো কিছু নেই — project শুরু হয়নি)*
+**Step 0.0 — Project Planning** ✅
+- Completed: 2026-08-06
+- Notes: PROJECT_PLAN, schema, types, Cursor rules ready; pushed to GitHub
+
+**Step 0.1 — GitHub Repository Setup** ✅ (core)
+- Completed: 2026-08-06
+- Notes: Repo `hsmsohrab-aidev/stt-platform`, `main` pushed. CODEOWNERS + branch protection optional later.
+
+**Step 0.2 — Supabase Project Setup** ✅ (core)
+- Completed: 2026-08-06
+- Notes: Project `vekrunjeyrvkhkwsxbxm`, project-scoped MCP, `.env.local` (gitignored). Schema apply + GitHub Secrets still pending.
 
 ---
 
 ### 🔄 CURRENT STEP
 
-**Step 0.0 — Project Planning**
+**Step 0.5 — Auth System (Multi-tenant)**
 - Status: 🔄 In Progress
 - Started: 2026-08-06
-- Goal: এই document সম্পূর্ণ করা এবং সবার কাছে share করা
-- Completed when: Document GitHub-এ push হয়েছে এবং সবাই পড়েছে
 
 ---
 
@@ -778,35 +786,16 @@ PHASE 5 — Scale & Advanced (Ongoing)
 
 #### PHASE 0: Foundation
 
-**Step 0.1 — GitHub Repository Setup**
-- Status: ⬜ Not started
-- What to do:
-  1. GitHub-এ নতুন organization তৈরি করো (stt-platform)
-  2. Monorepo তৈরি করো: `npx create-turbo@latest`
-  3. এই PROJECT_PLAN.md file add করো root-এ
-  4. `.github/CODEOWNERS` file তৈরি করো
-  5. Branch protection rules set করো (main branch)
-- Completed when: Repo live, CI/CD working
-- Notes: *(এখানে যা করলে লিখবে)*
-
----
-
-**Step 0.2 — Supabase Project Setup**
-- Status: ⬜ Not started
-- What to do:
-  1. supabase.com-এ account তৈরি করো
-  2. নতুন project তৈরি করো: `stt-platform-prod`
-  3. Region select করো: `ap-southeast-1` (Singapore — Bangladesh-এর কাছে) অথবা EU (যদি EU clients থাকে)
-  4. Database password securely store করো (1Password বা similar)
-  5. Anon key, service role key → GitHub Secrets-এ add করো
-  6. Supavisor (connection pooler) enable করো
-- Completed when: Supabase dashboard accessible, keys secured
-- Notes: *(এখানে যা করলে লিখবে)*
-
----
-
 **Step 0.3 — Monorepo Structure তৈরি**
-- Status: ⬜ Not started
+- Status: ✅ Completed (2026-08-06)
+- Notes: Turborepo workspaces, apps/web + apps/api, packages/types|database|ui
+
+**Step 0.4 — Design System Setup**
+- Status: ✅ Completed (2026-08-06)
+- Notes: shadcn/ui + Tailwind v4, brand navy/green, Button/Card/Input/Badge/Table, Sidebar/Header/PageWrapper
+
+**Step 0.5 — Auth System (Multi-tenant)**
+- Status: 🔄 In Progress
 - What to do: Turborepo-তে এই structure তৈরি করো:
   ```
   stt-platform/

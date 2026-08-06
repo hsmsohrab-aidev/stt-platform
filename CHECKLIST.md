@@ -9,12 +9,12 @@
 - [x] SCHEMA_REFERENCE.md + schema.sql ready
 - [x] Shared types (`packages/types/index.ts`) ready
 - [x] Cursor rules (`.cursor/rules`) ready
-- [ ] Document pushed to GitHub
+- [x] Document pushed to GitHub
 
 ### Step 0.1 — GitHub Repository Setup
 - [x] Repo created: `hsmsohrab-aidev/stt-platform`
 - [x] Local git init + remote connected
-- [ ] Initial commit + push to `main`
+- [x] Initial commit + push to `main`
 - [ ] `.github/CODEOWNERS` (optional later)
 - [ ] Branch protection on `main` (manual on GitHub)
 
@@ -27,23 +27,23 @@
 - [ ] GitHub Secrets for CI (later with 0.6)
 
 ### Step 0.3 — Monorepo Structure
-- [ ] Root `package.json` + workspaces / Turborepo
-- [ ] `turbo.json`
-- [ ] `apps/web` — Next.js 14 App Router complete
-- [ ] `apps/api` — NestJS scaffold
-- [ ] `packages/types` package wired
-- [ ] `packages/database` package scaffold
-- [ ] `packages/ui` package scaffold
-- [ ] `npm run dev` runs web (api later)
+- [x] Root `package.json` + workspaces / Turborepo
+- [x] `turbo.json`
+- [x] `apps/web` — Next.js 14 App Router + Supabase SSR + `@stt/types`
+- [x] `apps/api` — NestJS scaffold (`/api/health`)
+- [x] `packages/types` package wired
+- [x] `packages/database` package scaffold
+- [x] `packages/ui` package scaffold
+- [x] Web typecheck + build passing
 
 ### Step 0.4 — Design System
-- [ ] shadcn/ui init on `apps/web`
-- [ ] Brand colors (navy `#0A1628`, green `#00A651`)
-- [ ] Base components: Button, Card, Input, Badge, Table
-- [ ] Layout: Sidebar, Header, PageWrapper
+- [x] shadcn/ui init on `apps/web` (Tailwind v4)
+- [x] Brand colors (navy `#0A1628`, green `#00A651`)
+- [x] Base components: Button, Card, Input, Badge, Table
+- [x] Layout: Sidebar, Header, PageWrapper
 
 ### Step 0.5 — Auth (Multi-tenant)
-- [ ] Supabase clients (`@supabase/ssr`) in web
+- [x] Supabase clients (`@supabase/ssr`) in web
 - [ ] Core tables + RLS (orgs, profiles, roles)
 - [ ] Login / register pages
 - [ ] Middleware auth redirect
