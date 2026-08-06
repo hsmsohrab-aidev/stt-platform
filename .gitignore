@@ -1,0 +1,32 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+.env.local
+.env.production
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+.next/
+out/
+dist/
+build/
+coverage/
+
+# Misc
+.DS_Store
+*.log
+.turbo
+.vercel
+*.tsbuildinfo
+
+# OS / IDE
+Thumbs.db
+.idea/
