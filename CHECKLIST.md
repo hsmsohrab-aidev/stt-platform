@@ -53,7 +53,7 @@
 - [ ] Manual E2E login test in browser
 
 ### Step 0.6 — CI/CD
-- [ ] GitHub Actions: lint → typecheck → build
+- [x] GitHub Actions: lint → typecheck → build
 - [ ] Vercel deploy (web)
 - [ ] Railway deploy (api) — when api ready
 
