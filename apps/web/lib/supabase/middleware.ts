@@ -31,8 +31,28 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh session — do not remove
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  const isAuthRoute =
+    pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isPublicRoute =
+    isAuthRoute || pathname.startsWith('/p/') || pathname.startsWith('/api/');
+
+  if (!user && !isPublicRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    url.searchParams.set('next', pathname);
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isAuthRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/';
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }

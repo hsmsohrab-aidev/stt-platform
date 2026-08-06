@@ -1,4 +1,5 @@
 import type { OrgType } from '@stt/types';
+import { logoutAction } from '@/app/(auth)/actions';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { createClient } from '@/lib/supabase/server';
 
 const orgTypes: OrgType[] = [
   'brand',
@@ -28,39 +30,53 @@ const orgTypes: OrgType[] = [
   'financial',
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'STT Platform';
-  const supabaseConfigured = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: profile } = user
+    ? await supabase
+        .from('profiles')
+        .select('full_name, organization_id')
+        .eq('id', user.id)
+        .maybeSingle()
+    : { data: null };
 
   return (
     <PageWrapper
       title={appName}
-      description="Foundation ready — design system and monorepo scaffold"
-      actions={<Button>Get started</Button>}
+      description="Foundation ready — auth and design system online"
+      actions={
+        <form action={logoutAction}>
+          <Button type="submit" variant="outline">
+            Sign out
+          </Button>
+        </form>
+      }
     >
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>System status</CardTitle>
-            <CardDescription>Phase 0 foundation checks</CardDescription>
+            <CardTitle>Session</CardTitle>
+            <CardDescription>Current authenticated user</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span>Email</span>
+              <span className="truncate font-medium">{user?.email ?? '—'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span>Profile</span>
+              <Badge>{profile?.full_name ?? '—'}</Badge>
+            </div>
             <div className="flex items-center justify-between">
-              <span>Supabase env</span>
-              <Badge variant={supabaseConfigured ? 'default' : 'destructive'}>
-                {supabaseConfigured ? 'Configured' : 'Missing'}
+              <span>Organization</span>
+              <Badge variant="secondary">
+                {profile?.organization_id ? 'Linked' : 'Not linked yet'}
               </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Shared types</span>
-              <Badge>@stt/types</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>UI kit</span>
-              <Badge>shadcn/ui</Badge>
             </div>
           </CardContent>
         </Card>

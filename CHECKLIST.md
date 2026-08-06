@@ -23,8 +23,9 @@
 - [x] Project-scoped MCP (`.cursor/mcp.json`) — not global
 - [x] `.env.local` with URL + keys (gitignored)
 - [x] `.env.example` committed (empty values)
-- [ ] Schema applied to STT Supabase
-- [ ] GitHub Secrets for CI (later with 0.6)
+- [x] Auth core schema applied (orgs, profiles, roles, members + RLS)
+- [ ] Full schema.sql applied (Phase 1.1)
+- [ ] GitHub Secrets for CI (with 0.6)
 
 ### Step 0.3 — Monorepo Structure
 - [x] Root `package.json` + workspaces / Turborepo
@@ -44,10 +45,12 @@
 
 ### Step 0.5 — Auth (Multi-tenant)
 - [x] Supabase clients (`@supabase/ssr`) in web
-- [ ] Core tables + RLS (orgs, profiles, roles)
-- [ ] Login / register pages
-- [ ] Middleware auth redirect
-- [ ] Org isolation verified
+- [x] Core tables + RLS (orgs, profiles, roles, members)
+- [x] Login / register pages + server actions
+- [x] Middleware auth redirect (protect app, allow `/login` `/register` `/p/*`)
+- [x] Signup trigger creates `profiles` row
+- [ ] Org onboarding flow (Step 1.2)
+- [ ] Manual E2E login test in browser
 
 ### Step 0.6 — CI/CD
 - [ ] GitHub Actions: lint → typecheck → build
@@ -55,7 +58,7 @@
 - [ ] Railway deploy (api) — when api ready
 
 ## Phase 1 — MVP (after Phase 0)
-- [ ] 1.1 Core DB schema (5 tables)
+- [ ] 1.1 Core DB schema (5 tables + remaining from schema.sql)
 - [ ] 1.2 Organization onboarding
 - [ ] 1.3 Facility declaration
 - [ ] 1.4 Material wallet
