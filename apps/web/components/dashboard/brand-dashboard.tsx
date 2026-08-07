@@ -53,8 +53,8 @@ export function BrandDashboard({
   const kpis: Array<[string, string | number, string]> = [
     ['Suppliers linked', summary.totalSuppliers, 'Supply chain'],
     ['Pending TCs', summary.pendingTCs, 'Awaiting verify'],
-    ['Active orders', summary.activeOrders, 'Phase 2 module'],
-    ['Open alerts', summary.openAlerts, 'Watchlist'],
+    ['Risk score', summary.riskScore, 'Lower better'],
+    ['Compliance', summary.complianceScore, 'Higher better'],
   ];
 
   return (
@@ -181,7 +181,30 @@ export function BrandDashboard({
             · org id <span className="font-mono-stt">{orgId}</span>
           </>
         ) : null}
-        . Compliance/risk scores populate in later phases.
+        . Risk/compliance/sustainability scores are derived from live ops — see{' '}
+        <Link href="/risk" className="font-semibold underline-offset-2 hover:underline">
+          Risk
+        </Link>
+        ,{' '}
+        <Link
+          href="/compliance"
+          className="font-semibold underline-offset-2 hover:underline"
+        >
+          Compliance
+        </Link>
+        ,{' '}
+        <Link
+          href="/sustainability"
+          className="font-semibold underline-offset-2 hover:underline"
+        >
+          Sustainability
+        </Link>{' '}
+        · {summary.openAlerts} unread alert
+        {summary.openAlerts === 1 ? '' : 's'}
+        {summary.sustainabilityScore > 0
+          ? ` · sustainability ${summary.sustainabilityScore}`
+          : ''}
+        .
       </div>
     </div>
   );

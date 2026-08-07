@@ -1,13 +1,21 @@
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 type HeaderProps = {
   title: string;
   description?: string;
   actions?: React.ReactNode;
+  unreadCount?: number;
   className?: string;
 };
 
-export function Header({ title, description, actions, className }: HeaderProps) {
+export function Header({
+  title,
+  description,
+  actions,
+  unreadCount = 0,
+  className,
+}: HeaderProps) {
   return (
     <header
       className={cn(
@@ -24,15 +32,18 @@ export function Header({ title, description, actions, className }: HeaderProps) 
         ) : null}
       </div>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
-      <div className="hidden items-center gap-1.5 rounded-lg border border-stt-line bg-white px-2.5 py-1.5 text-[11.5px] text-stt-muted sm:flex">
-        Jul 06 – Jul 12, 2026
-      </div>
-      <div className="relative grid size-[34px] place-items-center rounded-[9px] border border-stt-line text-sm">
+      <Link
+        href="/alerts"
+        className="relative grid size-[34px] place-items-center rounded-[9px] border border-stt-line text-sm hover:bg-[#F8FAFC]"
+        aria-label="Alerts"
+      >
         <span aria-hidden>🔔</span>
-        <span className="absolute -right-1 -top-1 rounded-full bg-stt-red px-1 text-[8.5px] font-bold text-white">
-          5
-        </span>
-      </div>
+        {unreadCount > 0 ? (
+          <span className="absolute -right-1 -top-1 rounded-full bg-stt-red px-1 text-[8.5px] font-bold text-white">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        ) : null}
+      </Link>
       <div className="grid size-8 place-items-center rounded-full bg-stt-green text-[11px] font-bold text-white">
         ST
       </div>

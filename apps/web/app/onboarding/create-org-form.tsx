@@ -4,7 +4,7 @@ import { useFormState, useFormStatus } from 'react-dom';
 import {
   createOrganizationAction,
   type OnboardingState,
-} from '@/app/(dashboard)/onboarding/actions';
+} from '@/app/onboarding/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 

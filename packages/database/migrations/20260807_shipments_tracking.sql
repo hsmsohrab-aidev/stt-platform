@@ -1,0 +1,2 @@
+-- Phase 2.2 shipments (applied via MCP: shipments_tracking_core)
+-- shipments + shipment_events + RLS

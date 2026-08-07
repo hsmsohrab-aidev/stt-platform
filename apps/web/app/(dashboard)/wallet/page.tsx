@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { CreditForm } from '@/app/(dashboard)/wallet/credit-form';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { requireSessionContext } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
 function asMaterial(
@@ -26,59 +26,88 @@ function asMaterial(
 }
 
 export default async function WalletPage() {
+  const ctx = await requireSessionContext();
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('organization_id')
-    .eq('id', user.id)
-    .maybeSingle();
+  const [{ data: materials }, { data: wallet }] = await Promise.all([
+    supabase
+      .from('materials')
+      .select('id, name, standard')
+      .eq('is_active', true)
+      .order('name'),
+    supabase
+      .from('material_wallets')
+      .select('id')
+      .eq('organization_id', ctx.organizationId)
+      .is('facility_id', null)
+      .maybeSingle(),
+  ]);
 
-  if (!profile?.organization_id) redirect('/onboarding');
+  const [balancesResult, txsResult] = wallet
+    ? await Promise.all([
+        supabase
+          .from('wallet_balances')
+          .select(
+            'id, balance_qty, reserved_qty, available_qty, unit, material_id, materials(name, standard, material_type)'
+          )
+          .eq('wallet_id', wallet.id)
+          .order('last_updated_at', { ascending: false }),
+        supabase
+          .from('material_transactions')
+          .select(
+            'id, transaction_type, quantity, unit, description, transaction_date, materials(name)'
+          )
+          .eq('wallet_id', wallet.id)
+          .order('created_at', { ascending: false })
+          .limit(12),
+      ])
+    : [{ data: [] }, { data: [] }];
 
-  const { data: materials } = await supabase
-    .from('materials')
-    .select('id, name, standard')
-    .eq('is_active', true)
-    .order('name');
+  const balances = balancesResult.data;
+  const txs = txsResult.data;
 
-  const { data: wallet } = await supabase
-    .from('material_wallets')
-    .select('id')
-    .eq('organization_id', profile.organization_id)
-    .is('facility_id', null)
-    .maybeSingle();
-
-  const { data: balances } = wallet
-    ? await supabase
-        .from('wallet_balances')
-        .select(
-          'id, balance_qty, reserved_qty, available_qty, unit, material_id, materials(name, standard, material_type)'
-        )
-        .eq('wallet_id', wallet.id)
-        .order('last_updated_at', { ascending: false })
-    : { data: [] };
-
-  const { data: txs } = wallet
-    ? await supabase
-        .from('material_transactions')
-        .select(
-          'id, transaction_type, quantity, unit, description, transaction_date, materials(name)'
-        )
-        .eq('wallet_id', wallet.id)
-        .order('created_at', { ascending: false })
-        .limit(12)
-    : { data: [] };
+  const creditTotal = (txs ?? [])
+    .filter((t) => t.transaction_type === 'credit')
+    .reduce((sum, t) => sum + Number(t.quantity), 0);
+  const debitTotal = (txs ?? [])
+    .filter((t) => t.transaction_type === 'debit')
+    .reduce((sum, t) => sum + Number(t.quantity), 0);
+  const availableTotal = (balances ?? []).reduce(
+    (sum, b) => sum + Number(b.available_qty),
+    0
+  );
+  const lowBalance = (balances ?? []).some((b) => Number(b.available_qty) < 100);
 
   return (
     <PageWrapper
       title="Material Wallet"
       description="Mass-balance ready · every credit/debit ledgered"
     >
+      {lowBalance ? (
+        <div className="mb-3 rounded-[9px] border border-[#F2C7C7] bg-stt-red-soft px-3 py-2 text-[11.5px] text-[#A33]">
+          Low balance warning: at least one material is under 100 KG available.
+        </div>
+      ) : null}
+
+      <div className="mb-3.5 grid gap-3 sm:grid-cols-3">
+        {[
+          ['Received (recent ledger)', creditTotal],
+          ['Issued / debit (recent)', debitTotal],
+          ['Available now', availableTotal],
+        ].map(([label, value]) => (
+          <div
+            key={String(label)}
+            className="rounded-xl border border-stt-line bg-white p-3.5 shadow-[var(--stt-shadow)]"
+          >
+            <div className="text-[10.5px] font-semibold text-stt-muted">{label}</div>
+            <div className="mt-1 font-display text-[20px] font-bold text-stt-ink">
+              {Number(value).toLocaleString()}{' '}
+              <span className="text-[11px] text-stt-muted">KG</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {(balances ?? []).length === 0 ? (
           <div className="rounded-xl border border-stt-line bg-white p-3.5 shadow-[var(--stt-shadow)] sm:col-span-2">

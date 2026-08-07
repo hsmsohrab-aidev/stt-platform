@@ -1,31 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { requireActionContext } from '@/lib/auth/session';
 
 export type WalletActionState = {
   error: string | null;
   success?: string;
 };
-
-async function requireOrg() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('organization_id')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (!profile?.organization_id) redirect('/onboarding');
-
-  return { supabase, user, orgId: profile.organization_id as string };
-}
 
 export async function creditWalletAction(
   _prev: WalletActionState,
@@ -40,19 +21,19 @@ export async function creditWalletAction(
     return { error: 'Quantity must be greater than 0.' };
   }
 
-  const { supabase, user, orgId } = await requireOrg();
+  const { supabase, userId, organizationId } = await requireActionContext();
 
   let { data: wallet } = await supabase
     .from('material_wallets')
     .select('id')
-    .eq('organization_id', orgId)
+    .eq('organization_id', organizationId)
     .is('facility_id', null)
     .maybeSingle();
 
   if (!wallet) {
     const { data: created, error } = await supabase
       .from('material_wallets')
-      .insert({ organization_id: orgId })
+      .insert({ organization_id: organizationId })
       .select('id')
       .single();
     if (error || !created) return { error: error?.message ?? 'Wallet create failed.' };
@@ -67,10 +48,18 @@ export async function creditWalletAction(
     unit: 'KG',
     reference_type: 'opening_balance',
     description,
-    created_by: user.id,
+    created_by: userId,
   });
 
   if (error) return { error: error.message };
+
+  const { syncMassBalanceForMaterial } = await import('@/lib/wallet/mass-balance');
+  await syncMassBalanceForMaterial({
+    supabase,
+    organizationId,
+    walletId: wallet.id,
+    materialId,
+  }).catch(() => undefined);
 
   revalidatePath('/wallet');
   return { error: null, success: `Credited ${quantity} KG` };

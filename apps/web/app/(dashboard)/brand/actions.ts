@@ -1,9 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import type { TierLevel } from '@stt/types';
-import { createClient } from '@/lib/supabase/server';
+import { requireActionContext } from '@/lib/auth/session';
 
 export type LinkSupplierState = {
   error: string | null;
@@ -19,27 +18,9 @@ export async function linkSupplierAction(
 
   if (!supplierOrgId) return { error: 'Supplier organization UUID is required.' };
 
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const { supabase, organizationId, orgType } = await requireActionContext();
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('organization_id')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (!profile?.organization_id) redirect('/onboarding');
-
-  const { data: brandOrg } = await supabase
-    .from('organizations')
-    .select('org_type')
-    .eq('id', profile.organization_id)
-    .maybeSingle();
-
-  if (brandOrg?.org_type !== 'brand') {
+  if (orgType !== 'brand') {
     return { error: 'Only brand organizations can link suppliers.' };
   }
 
@@ -55,7 +36,7 @@ export async function linkSupplierAction(
   }
 
   const { error } = await supabase.from('supplier_relationships').insert({
-    brand_org_id: profile.organization_id,
+    brand_org_id: organizationId,
     supplier_org_id: supplierOrg.id,
     tier_level: tierLevel || 'tier_1',
     status: 'active',
@@ -69,7 +50,7 @@ export async function linkSupplierAction(
   }
 
   await supabase.from('supply_chain_tiers').insert({
-    brand_org_id: profile.organization_id,
+    brand_org_id: organizationId,
     supplier_org_id: supplierOrg.id,
     tier_level: tierLevel || 'tier_1',
   });

@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { completeOnboardingStepAction } from '@/app/(dashboard)/onboarding/actions';
-import { CreateOrgForm } from '@/app/(dashboard)/onboarding/create-org-form';
+import { completeOnboardingStepAction } from '@/app/onboarding/actions';
+import { CreateOrgForm } from '@/app/onboarding/create-org-form';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
 const phases = [
@@ -22,11 +23,8 @@ type PageProps = {
 export default async function OnboardingPage({ searchParams }: PageProps) {
   const stepParam = Number(searchParams.step ?? '1');
 
+  const user = await requireUser();
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -52,6 +50,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
     <PageWrapper
       title="Onboarding Journey"
       description={`Phase ${currentStep} of 5 · Guided setup`}
+      standalone
     >
       <div className="rounded-xl border border-stt-line bg-white p-4 shadow-[var(--stt-shadow)]">
         <div className="flex flex-wrap gap-0 overflow-x-auto">

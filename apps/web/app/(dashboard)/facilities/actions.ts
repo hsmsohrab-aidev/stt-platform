@@ -1,9 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import type { FacilityType, TierLevel } from '@stt/types';
-import { createClient } from '@/lib/supabase/server';
+import { requireActionContext } from '@/lib/auth/session';
 
 export type FacilityActionState = {
   error: string | null;
@@ -23,24 +22,10 @@ export async function createFacilityAction(
   if (!name) return { error: 'Facility name is required.' };
   if (!facilityType) return { error: 'Facility type is required.' };
 
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: 'Not signed in.' };
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('organization_id')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (!profile?.organization_id) {
-    redirect('/onboarding');
-  }
+  const { supabase, organizationId } = await requireActionContext();
 
   const { error } = await supabase.from('facilities').insert({
-    organization_id: profile.organization_id,
+    organization_id: organizationId,
     name,
     facility_type: facilityType,
     tier_level: tierLevel || null,

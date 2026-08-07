@@ -1,0 +1,2 @@
+-- Phase 2.3 verification marketplace (MCP: verification_marketplace_core)
+-- verification_requests, verification_assignments, audit_reports, is_auditor_org()

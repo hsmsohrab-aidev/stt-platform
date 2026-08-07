@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { FacilityForm } from '@/app/(dashboard)/facilities/facility-form';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
@@ -10,27 +9,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { requireSessionContext } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function FacilitiesPage() {
+  const ctx = await requireSessionContext();
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('organization_id')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (!profile?.organization_id) redirect('/onboarding');
 
   const { data: facilities } = await supabase
     .from('facilities')
-    .select('id, name, facility_type, tier_level, city, country, is_verified, is_active, created_at')
-    .eq('organization_id', profile.organization_id)
+    .select(
+      'id, name, facility_type, tier_level, city, country, is_verified, is_active, created_at'
+    )
+    .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false });
 
   return (

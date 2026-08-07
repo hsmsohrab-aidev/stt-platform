@@ -144,3 +144,20 @@
     scroll-behavior: auto !important;
   }
 }
+
+@media print {
+  aside,
+  header,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+}
+

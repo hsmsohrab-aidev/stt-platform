@@ -14,23 +14,27 @@ const operate: NavItem[] = [
   { href: '/', label: 'Dashboard' },
   { href: '/brand', label: 'Brand hub' },
   { href: '/supplier', label: 'Supplier hub' },
+  { href: '/auditor', label: 'Auditor hub' },
   { href: '/orders', label: 'Orders' },
+  { href: '/shipments', label: 'Shipments' },
   { href: '/materials', label: 'Materials' },
   { href: '/wallet', label: 'Material Wallet' },
   { href: '/tc', label: 'TC Certificates' },
-  { href: '/facilities', label: 'Supply Chain' },
+  { href: '/dpp', label: 'Product Passport' },
+  { href: '/verification', label: 'Verification' },
+  { href: '/facilities', label: 'Facilities' },
+  { href: '/supply-chain', label: 'Supply Chain' },
 ];
 
 const assure: NavItem[] = [
-  { href: '/risk', label: 'Risk Hub', badge: 18 },
+  { href: '/risk', label: 'Risk Hub' },
   { href: '/compliance', label: 'Compliance' },
   { href: '/sustainability', label: 'Sustainability' },
-  { href: '/verification', label: 'Verification' },
 ];
 
 const decide: NavItem[] = [
   { href: '/reports', label: 'Reports' },
-  { href: '/alerts', label: 'Alerts', badge: 5 },
+  { href: '/alerts', label: 'Alerts' },
   { href: '/membership', label: 'Membership' },
 ];
 

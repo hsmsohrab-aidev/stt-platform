@@ -1,0 +1,4 @@
+-- Phase 2.1 DPP core (applied via MCP: product_passports_dpp_core)
+-- product_passports, passport_materials, passport_supply_chain,
+-- passport_sustainability, passport_qr_codes, passport_scans,
+-- get_public_passport(uuid) SECURITY DEFINER + GRANT TO anon

@@ -1,8 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { requireActionContext } from '@/lib/auth/session';
 
 export type VerifyTcState = {
   error: string | null;
@@ -10,19 +9,7 @@ export type VerifyTcState = {
 };
 
 export async function verifyTcAction(tcId: string): Promise<VerifyTcState> {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('organization_id')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (!profile?.organization_id) redirect('/onboarding');
+  const { supabase, userId, organizationId } = await requireActionContext();
 
   const { data: tc } = await supabase
     .from('transaction_certificates')
@@ -31,7 +18,7 @@ export async function verifyTcAction(tcId: string): Promise<VerifyTcState> {
     .maybeSingle();
 
   if (!tc) return { error: 'TC not found.' };
-  if (tc.receiver_org_id !== profile.organization_id) {
+  if (tc.receiver_org_id !== organizationId) {
     return { error: 'Only the receiver organization can verify this TC.' };
   }
   if (tc.tc_status === 'verified') {
@@ -42,7 +29,7 @@ export async function verifyTcAction(tcId: string): Promise<VerifyTcState> {
     .from('transaction_certificates')
     .update({
       tc_status: 'verified',
-      verified_by: user.id,
+      verified_by: userId,
       verified_at: new Date().toISOString(),
     })
     .eq('id', tcId);
@@ -52,8 +39,8 @@ export async function verifyTcAction(tcId: string): Promise<VerifyTcState> {
   await supabase.from('tc_verifications').insert({
     tc_id: tcId,
     verification_status: 'completed',
-    verified_by: user.id,
-    verifier_org_id: profile.organization_id,
+    verified_by: userId,
+    verifier_org_id: organizationId,
     method: 'platform',
   });
 

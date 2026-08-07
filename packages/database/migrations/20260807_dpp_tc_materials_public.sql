@@ -1,0 +1,2 @@
+-- Phase 2.8: public DPP includes passport_materials + linked TC numbers
+-- Applied via MCP: dpp_tc_materials_public

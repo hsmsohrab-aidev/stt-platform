@@ -74,8 +74,8 @@ export function SupplierDashboard({
       <div className="grid gap-3 sm:grid-cols-3">
         {[
           ['Issued TCs', summary.issuedTCs],
-          ['Facilities', facilities.length],
-          ['Pending orders', summary.pendingOrders],
+          ['Compliance tasks', summary.complianceTasks],
+          ['High priority', summary.overdueTasksCount],
         ].map(([label, value]) => (
           <div
             key={String(label)}

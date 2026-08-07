@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import type { OrgType } from '@stt/types';
+import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
 export type OnboardingState = {
@@ -34,14 +35,8 @@ export async function createOrganizationAction(
     return { error: 'Choose brand, supplier, or auditor.' };
   }
 
+  const user = await requireUser();
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'You must be signed in.' };
-  }
 
   const { data: existingProfile } = await supabase
     .from('profiles')
@@ -126,11 +121,8 @@ export async function createOrganizationAction(
 }
 
 export async function completeOnboardingStepAction(step: number) {
+  const user = await requireUser();
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
 
   const { data: profile } = await supabase
     .from('profiles')

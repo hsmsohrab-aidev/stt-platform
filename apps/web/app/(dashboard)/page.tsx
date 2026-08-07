@@ -9,6 +9,7 @@ import {
   loadBrandDashboardData,
   loadSupplierDashboardData,
 } from '@/lib/dashboard/loaders';
+import { redirect } from 'next/navigation';
 
 export default async function HomePage() {
   const ctx = await requireSessionContext();
@@ -89,7 +90,11 @@ export default async function HomePage() {
     );
   }
 
-  // Auditor / other roles — compact overview until dedicated dashboards
+  if (ctx.orgType === 'auditor') {
+    redirect('/auditor');
+  }
+
+  // Other roles — compact overview until dedicated dashboards
   return (
     <PageWrapper
       title="Workspace"
