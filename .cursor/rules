@@ -6,7 +6,14 @@
 - Name: STT Platform (Smart Traceability Technology)
 - Stack: Next.js 14 (App Router) + NestJS + Supabase (PostgreSQL) + TypeScript
 - Monorepo: Turborepo
-- Structure: apps/web (Next.js), apps/api (NestJS), packages/database, packages/types, packages/ui
+- Structure: apps/api (Next.js web UI), apps/server (NestJS), packages/database, packages/types, packages/ui
+
+## DEPLOYMENT — Git only (CRITICAL)
+1. সব কোড চেঞ্জ **git commit + push**-এর মাধ্যমেই করবে — এটাই Vercel-এ যাবে (GitHub integration)
+2. **সরাসরি Vercel-এ** কোড/config mutate করবে না: `deploy_to_vercel`, CLI `vercel deploy` (git ছাড়া), dashboard file edit, বা MCP দিয়ে production override নিষিদ্ধ
+3. Platform settings (env vars, domain, protection) দরকার হলে user-কে dashboard ধাপ বলো — agent নিজে Vercel API/MCP দিয়ে mute/change করবে না যতক্ষণ user স্পষ্টভাবে না বলে
+4. Fix → local verify → `git add` → `git commit` → `git push origin main` → Vercel deploy watch
+5. Secrets (`.env.local`, keys) কখনো commit করবে না
 
 ## CRITICAL FILES — কোড লেখার আগে এগুলো পড়ো
 - `/database/schema.sql` — সম্পূর্ণ database schema (75 tables)
