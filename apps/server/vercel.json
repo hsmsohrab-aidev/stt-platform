@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
+  "framework": "nestjs",
   "installCommand": "cd ../.. && npm install",
-  "buildCommand": "cd ../.. && npx turbo run build --filter=web"
+  "buildCommand": "cd ../.. && npx turbo run build --filter=api"
 }
