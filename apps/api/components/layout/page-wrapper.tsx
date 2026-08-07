@@ -9,8 +9,10 @@ type PageWrapperProps = {
   actions?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
-  /** When true, wraps with Sidebar (onboarding / invite outside dashboard layout). */
+  /** When true, wraps with Sidebar (invite outside dashboard layout). */
   standalone?: boolean;
+  /** Onboarding before org exists — no sidebar (nav would bounce back here). */
+  bare?: boolean;
 };
 
 export async function PageWrapper({
@@ -20,8 +22,9 @@ export async function PageWrapper({
   children,
   className,
   standalone = false,
+  bare = false,
 }: PageWrapperProps) {
-  const unread = await getUnreadNotificationCount();
+  const unread = bare ? 0 : await getUnreadNotificationCount();
 
   const body = (
     <>
@@ -37,6 +40,9 @@ export async function PageWrapper({
     </>
   );
 
+  if (bare) {
+    return <div className="flex min-h-screen flex-col bg-stt-bg">{body}</div>;
+  }
   if (standalone) return <AppShell>{body}</AppShell>;
   return body;
 }

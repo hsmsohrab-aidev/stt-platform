@@ -49,8 +49,13 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
   return (
     <PageWrapper
       title="Onboarding Journey"
-      description={`Phase ${currentStep} of 5 · Guided setup`}
-      standalone
+      description={
+        org
+          ? `Phase ${currentStep} of 5 · Guided setup`
+          : 'Create your organization to unlock the platform'
+      }
+      bare={!org}
+      standalone={Boolean(org)}
     >
       <div className="rounded-xl border border-stt-line bg-white p-4 shadow-[var(--stt-shadow)]">
         <div className="flex flex-wrap gap-0 overflow-x-auto">
@@ -105,7 +110,8 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
               <>
                 <p className="text-[12px] text-stt-muted">
                   Hello {profile?.full_name ?? 'there'} — create your organization to
-                  unlock facilities, wallet, and TC workflows.
+                  unlock facilities, wallet, and TC workflows. Other menus stay locked
+                  until you finish this step.
                 </p>
                 <CreateOrgForm defaultEmail={user.email} />
               </>

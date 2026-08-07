@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import type { OrgType } from '@stt/types';
 import { requireUser } from '@/lib/auth/session';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
 export type OnboardingState = {
@@ -48,10 +49,22 @@ export async function createOrganizationAction(
     redirect('/');
   }
 
+  // Service role for bootstrap — RLS blocks RETURNING/wallet insert before
+  // current_org_id() is set (chicken-and-egg on first org create).
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return {
+      error:
+        'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY is required to create an organization.',
+    };
+  }
+
   const baseSlug = slugify(name) || `org-${Date.now()}`;
   let slug = baseSlug;
   for (let i = 0; i < 5; i += 1) {
-    const { data: clash } = await supabase
+    const { data: clash } = await admin
       .from('organizations')
       .select('id')
       .eq('slug', slug)
@@ -60,7 +73,7 @@ export async function createOrganizationAction(
     slug = `${baseSlug}-${i + 2}`;
   }
 
-  const { data: org, error: orgError } = await supabase
+  const { data: org, error: orgError } = await admin
     .from('organizations')
     .insert({
       name,
@@ -68,8 +81,9 @@ export async function createOrganizationAction(
       org_type: orgType,
       country,
       email,
-      onboarding_completed: false,
-      onboarding_step: 1,
+      onboarding_completed: true,
+      onboarding_step: 5,
+      is_active: true,
     })
     .select('id')
     .single();
@@ -85,22 +99,23 @@ export async function createOrganizationAction(
         ? 'supplier_admin'
         : 'auditor_lead';
 
-  const { data: role } = await supabase
+  const { data: role } = await admin
     .from('roles')
     .select('id')
     .eq('name', roleName)
     .maybeSingle();
 
-  const { error: profileError } = await supabase
+  const { error: profileError } = await admin
     .from('profiles')
     .update({ organization_id: org.id })
     .eq('id', user.id);
 
   if (profileError) {
+    await admin.from('organizations').delete().eq('id', org.id);
     return { error: profileError.message };
   }
 
-  const { error: memberError } = await supabase.from('organization_members').insert({
+  const { error: memberError } = await admin.from('organization_members').insert({
     organization_id: org.id,
     user_id: user.id,
     role_id: role?.id ?? null,
@@ -112,12 +127,12 @@ export async function createOrganizationAction(
   }
 
   if (orgType === 'supplier' || orgType === 'brand') {
-    await supabase.from('material_wallets').insert({
+    await admin.from('material_wallets').insert({
       organization_id: org.id,
     });
   }
 
-  redirect('/onboarding?step=2');
+  redirect('/');
 }
 
 export async function completeOnboardingStepAction(step: number) {
