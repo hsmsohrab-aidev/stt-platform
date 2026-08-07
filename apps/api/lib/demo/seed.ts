@@ -822,16 +822,34 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     meta.verificationIds.push(vr.id);
 
     if (status !== 'open') {
-      await admin.from('verification_assignments').insert({
-        request_id: vr.id,
-        auditor_org_id: auditorId,
-        status: status === 'completed' ? 'completed' : 'accepted',
-        assigned_at: isoDaysAgo(6),
-        accepted_at: isoDaysAgo(5),
-      });
+      const { data: assignment } = await admin
+        .from('verification_assignments')
+        .insert({
+          request_id: vr.id,
+          auditor_org_id: auditorId,
+          status: status === 'completed' ? 'completed' : 'accepted',
+          assigned_at: isoDaysAgo(6),
+          accepted_at: isoDaysAgo(5),
+        })
+        .select('id')
+        .single();
+
+      if (status === 'completed' && assignment) {
+        await admin.from('audit_reports').insert({
+          assignment_id: assignment.id,
+          request_id: vr.id,
+          report_title: `Pilot audit · ${PRODUCT_NAMES[i]}`,
+          overall_rating: i % 2 === 0 ? 'pass' : 'conditional',
+          score: 70 + i,
+          findings_summary: `Demo findings for ${PRODUCT_NAMES[i]}`,
+          audit_date: daysAgo(3),
+          is_published: true,
+          published_at: isoDaysAgo(2),
+        });
+      }
     }
   }
-  summary.push(`${N} verification requests`);
+  summary.push(`${N} verification requests (+ audit reports)`);
 
   // ── Alerts / membership (≥10 each) ────────────────────────────────
   for (let i = 0; i < N; i += 1) {

@@ -30,6 +30,7 @@
 - [x] `/verification` — brand request / auditor claim / publish report
 - [x] `/auditor` hub KPIs + open jobs + assignments
 - [x] Home `/` redirects auditor → `/auditor`
+- [x] Cross-role hubs: Brand / Supplier / Auditor no longer bounce-redirect; show network data for current org
 - [ ] Bidding / competitive quotes (later)
 - [ ] File upload for audit pack (later)
 
@@ -91,8 +92,9 @@
 - [x] QR list with printable images
 
 ### Step 2.11 — Next (ops / infra)
-- [ ] Deploy web to Vercel + env (see `.env.example`)
-- [ ] Manual E2E pilot run + feedback
+- [x] Git → Vercel auto-deploy (Root `apps/api`) for web UI
+- [ ] Confirm Vercel env: `NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL` (dashboard)
+- [ ] Manual E2E pilot run + feedback (`docs/FEATURE_TEST_LIST.md`)
 - [ ] Hyperledger Fabric writer (replace `stt_mock`) — needs Fabric network
 - [ ] GPS / carrier API ingest
 - [ ] Resend production domain verify

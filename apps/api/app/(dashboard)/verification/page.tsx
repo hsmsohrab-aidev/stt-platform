@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { requireSessionContext } from '@/lib/auth/session';
+import { loadVerificationHubData } from '@/lib/dashboard/loaders';
 import { createClient } from '@/lib/supabase/server';
 
 const statusClass: Record<string, string> = {
@@ -25,19 +26,11 @@ const statusClass: Record<string, string> = {
 export default async function VerificationPage() {
   const ctx = await requireSessionContext();
   const supabase = createClient();
-
-  const { data: requests } = await supabase
-    .from('verification_requests')
-    .select(
-      'id, request_number, verification_type, scope, status, standards, deadline_date, budget_max_usd, buyer_org_id, supplier_org_id, created_at'
-    )
-    .order('created_at', { ascending: false })
-    .limit(50);
+  const hub = await loadVerificationHubData(ctx);
+  const requests = hub.requests;
 
   const orgIds = Array.from(
-    new Set(
-      (requests ?? []).flatMap((r) => [r.buyer_org_id, r.supplier_org_id])
-    )
+    new Set(requests.flatMap((r) => [r.buyer_org_id, r.supplier_org_id]))
   );
   const { data: orgs } =
     orgIds.length > 0
@@ -63,19 +56,7 @@ export default async function VerificationPage() {
     }
   }
 
-  let myAssignments: {
-    id: string;
-    request_id: string;
-    status: string;
-  }[] = [];
-  if (ctx.orgType === 'auditor') {
-    const { data } = await supabase
-      .from('verification_assignments')
-      .select('id, request_id, status')
-      .eq('auditor_org_id', ctx.organizationId)
-      .in('status', ['assigned', 'accepted', 'completed']);
-    myAssignments = data ?? [];
-  }
+  const myAssignments = hub.myAssignments;
   const assignmentByRequest = new Map(
     myAssignments.map((a) => [a.request_id, a])
   );
@@ -95,16 +76,35 @@ export default async function VerificationPage() {
           ? 'Marketplace · claim open jobs · publish reports'
           : ctx.orgType === 'brand'
             ? 'Request audits on linked suppliers'
-            : 'Verification requests involving your org'
+            : 'Verification requests involving your organization'
       }
     >
+      <div className="mb-3.5 grid gap-3 sm:grid-cols-4">
+        {(
+          [
+            ['Total', hub.kpis.total],
+            ['Open', hub.kpis.open],
+            ['Active', hub.kpis.active],
+            ['Completed', hub.kpis.completed],
+          ] as const
+        ).map(([label, value]) => (
+          <div
+            key={label}
+            className="rounded-xl border border-stt-line bg-white p-3 shadow-[var(--stt-shadow)]"
+          >
+            <div className="text-[10.5px] font-semibold text-stt-muted">{label}</div>
+            <div className="mt-0.5 font-display text-[20px] font-bold">{value}</div>
+          </div>
+        ))}
+      </div>
+
       <div className="grid gap-3.5 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-3.5">
           <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
             <div className="flex items-center border-b border-stt-line px-4 py-3">
               <h3 className="text-[12.5px] font-bold">Requests</h3>
               <Badge className="ml-auto rounded-full bg-stt-purple-soft text-stt-purple">
-                {requests?.length ?? 0}
+                {requests.length}
               </Badge>
             </div>
             <Table>
@@ -117,14 +117,15 @@ export default async function VerificationPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(requests ?? []).length === 0 ? (
+                {requests.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-[12px] text-stt-muted">
-                      No verification requests yet.
+                      No verification requests yet. Brands create them from the panel on
+                      the right, or load Demo Data.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  (requests ?? []).map((r) => {
+                  requests.map((r) => {
                     const assignment = assignmentByRequest.get(r.id);
                     const report = reportByRequest.get(r.id);
                     return (
@@ -139,9 +140,7 @@ export default async function VerificationPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-[11px]">
-                          <div>
-                            Buyer: {nameById.get(r.buyer_org_id) ?? '—'}
-                          </div>
+                          <div>Buyer: {nameById.get(r.buyer_org_id) ?? '—'}</div>
                           <div className="text-stt-muted">
                             Supplier: {nameById.get(r.supplier_org_id) ?? '—'}
                           </div>
@@ -164,12 +163,14 @@ export default async function VerificationPage() {
                           {ctx.orgType === 'auditor' &&
                           assignment &&
                           assignment.status !== 'completed' &&
-                          r.status === 'in_progress' ? (
+                          (r.status === 'in_progress' || r.status === 'assigned') ? (
                             <span className="text-[10px] font-semibold text-stt-green-dark">
                               Yours · complete →
                             </span>
                           ) : null}
-                          {ctx.orgType !== 'auditor' ? '—' : null}
+                          {ctx.orgType !== 'auditor' ? (
+                            <span className="text-[11px] text-stt-muted">View only</span>
+                          ) : null}
                         </TableCell>
                       </TableRow>
                     );
@@ -187,9 +188,7 @@ export default async function VerificationPage() {
                     key={a.id}
                     className="rounded-xl border border-stt-line bg-white p-4 shadow-[var(--stt-shadow)]"
                   >
-                    <h3 className="mb-3 text-[12.5px] font-bold">
-                      Complete assignment
-                    </h3>
+                    <h3 className="mb-3 text-[12.5px] font-bold">Complete assignment</h3>
                     <CompleteVerificationForm
                       assignmentId={a.id}
                       requestId={a.request_id}
@@ -210,10 +209,10 @@ export default async function VerificationPage() {
               </div>
             </>
           ) : (
-            <div className="p-4 text-[12px] text-stt-muted">
+            <div className="p-4 text-[12px] leading-relaxed text-stt-muted">
               {ctx.orgType === 'auditor'
                 ? 'Claim open requests from the list, then publish an audit report.'
-                : 'Brands create verification requests. You will be notified when one involves your org.'}
+                : 'You see every verification that lists your org as supplier (or buyer). Brands create new requests; auditors claim and complete them.'}
             </div>
           )}
         </div>

@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { logoutAction } from '@/app/(auth)/actions';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
@@ -13,75 +12,62 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { requireSessionContext } from '@/lib/auth/session';
+import { loadVerificationHubData } from '@/lib/dashboard/loaders';
 import { createClient } from '@/lib/supabase/server';
+
+const statusClass: Record<string, string> = {
+  open: 'rounded-full bg-stt-purple-soft text-stt-purple',
+  assigned: 'rounded-full bg-stt-blue-soft text-stt-blue',
+  in_progress: 'rounded-full bg-stt-amber-soft text-stt-amber',
+  completed: 'rounded-full bg-stt-green-soft text-stt-green-dark',
+  cancelled: 'rounded-full bg-[#EDF1F6] text-stt-muted',
+};
 
 export default async function AuditorHubPage() {
   const ctx = await requireSessionContext();
-  if (ctx.orgType !== 'auditor') redirect('/verification');
-
   const supabase = createClient();
+  const hub = await loadVerificationHubData(ctx);
 
-  const [
-    { count: openCount },
-    { count: mineCount },
-    { count: doneCount },
-    { data: openJobs },
-    { data: myJobs },
-  ] = await Promise.all([
-    supabase
-      .from('verification_requests')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'open'),
-    supabase
-      .from('verification_assignments')
-      .select('id', { count: 'exact', head: true })
-      .eq('auditor_org_id', ctx.organizationId)
-      .neq('status', 'completed'),
-    supabase
-      .from('verification_assignments')
-      .select('id', { count: 'exact', head: true })
-      .eq('auditor_org_id', ctx.organizationId)
-      .eq('status', 'completed'),
-    supabase
-      .from('verification_requests')
-      .select(
-        'id, request_number, verification_type, scope, status, buyer_org_id, supplier_org_id, deadline_date'
-      )
-      .eq('status', 'open')
-      .order('created_at', { ascending: false })
-      .limit(8),
-    supabase
-      .from('verification_assignments')
-      .select('id, status, request_id, accepted_at')
-      .eq('auditor_org_id', ctx.organizationId)
-      .order('assigned_at', { ascending: false })
-      .limit(8),
-  ]);
-
-  const requestIds = (myJobs ?? []).map((j) => j.request_id);
-  const { data: myRequests } =
-    requestIds.length > 0
-      ? await supabase
-          .from('verification_requests')
-          .select('id, request_number, verification_type, status')
-          .in('id', requestIds)
+  const orgIds = Array.from(
+    new Set(hub.requests.flatMap((r) => [r.buyer_org_id, r.supplier_org_id]))
+  );
+  const { data: orgs } =
+    orgIds.length > 0
+      ? await supabase.from('organizations').select('id, name').in('id', orgIds)
       : { data: [] };
-  const reqById = new Map((myRequests ?? []).map((r) => [r.id, r]));
+  const nameById = new Map((orgs ?? []).map((o) => [o.id, o.name]));
 
-  const kpis: Array<[string, number, string]> = [
-    ['Open marketplace', openCount ?? 0, 'Claimable'],
-    ['Active jobs', mineCount ?? 0, 'In progress'],
-    ['Completed', doneCount ?? 0, 'Reports'],
-  ];
+  const isAuditor = ctx.orgType === 'auditor';
+
+  const kpis: Array<[string, number, string]> = isAuditor
+    ? [
+        ['Open marketplace', hub.kpis.open, 'Claimable'],
+        ['Active', hub.kpis.active, 'In progress'],
+        ['Completed', hub.kpis.completed, 'Reports'],
+      ]
+    : [
+        ['Total involving you', hub.kpis.total, 'All statuses'],
+        ['Open / active', hub.kpis.open + hub.kpis.active, 'Pending'],
+        ['Completed', hub.kpis.completed, 'Done'],
+      ];
 
   return (
     <PageWrapper
-      title="Auditor Dashboard"
-      description={`${ctx.orgName} · verification marketplace`}
+      title="Auditor Hub"
+      description={
+        isAuditor
+          ? `${ctx.orgName} · verification marketplace`
+          : `${ctx.orgName} · verification jobs involving your org`
+      }
       actions={
         <div className="flex items-center gap-2">
+          {!isAuditor ? (
+            <Badge className="rounded-full bg-stt-blue-soft text-stt-blue">
+              Viewing as {ctx.orgType}
+            </Badge>
+          ) : null}
           <Button asChild variant="outline" className="h-8 rounded-[9px] text-xs">
-            <Link href="/verification">Marketplace</Link>
+            <Link href="/verification">Verification</Link>
           </Button>
           <form action={logoutAction}>
             <Button
@@ -95,6 +81,13 @@ export default async function AuditorHubPage() {
         </div>
       }
     >
+      {!isAuditor ? (
+        <div className="mb-3 rounded-[9px] border border-[#CCDCF9] bg-stt-blue-soft px-3 py-2 text-[11.5px] text-[#1E4FA8]">
+          Auditor claim/publish actions need an <b>auditor</b> org. This page stays here and
+          lists verification requests where you are buyer or supplier — no redirect.
+        </div>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-3">
         {kpis.map(([label, value, hint]) => (
           <div
@@ -110,90 +103,63 @@ export default async function AuditorHubPage() {
         ))}
       </div>
 
-      <div className="mt-3.5 grid gap-3.5 lg:grid-cols-2">
-        <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
-          <div className="border-b border-stt-line px-4 py-3">
-            <h3 className="text-[12.5px] font-bold">Open jobs</h3>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-[10px] uppercase text-stt-faint">VR</TableHead>
-                <TableHead className="text-[10px] uppercase text-stt-faint">Type</TableHead>
-                <TableHead className="text-[10px] uppercase text-stt-faint">Deadline</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(openJobs ?? []).length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-[12px] text-stt-muted">
-                    No open requests.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                (openJobs ?? []).map((j) => (
-                  <TableRow key={j.id}>
-                    <TableCell className="font-mono-stt text-[11px] text-stt-blue">
-                      {j.request_number}
-                    </TableCell>
-                    <TableCell className="text-[12px]">{j.verification_type}</TableCell>
-                    <TableCell className="font-mono-stt text-[11px]">
-                      {j.deadline_date ?? '—'}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-          <div className="border-t border-stt-line px-4 py-3">
-            <Button asChild className="h-8 rounded-[9px] bg-stt-green text-xs hover:bg-stt-green-dark">
-              <Link href="/verification">Claim on marketplace →</Link>
-            </Button>
-          </div>
+      <div className="mt-3.5 rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+        <div className="flex items-center border-b border-stt-line px-4 py-3">
+          <h3 className="text-[12.5px] font-bold">
+            {isAuditor ? 'Marketplace & jobs' : 'Your verification requests'}
+          </h3>
+          <Badge className="ml-auto rounded-full bg-stt-purple-soft text-stt-purple">
+            {hub.requests.length}
+          </Badge>
         </div>
-
-        <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
-          <div className="border-b border-stt-line px-4 py-3">
-            <h3 className="text-[12.5px] font-bold">My assignments</h3>
-          </div>
-          <Table>
-            <TableHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-[10px] uppercase text-stt-faint">VR</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Parties</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Type</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Status</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Deadline</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {hub.requests.length === 0 ? (
               <TableRow>
-                <TableHead className="text-[10px] uppercase text-stt-faint">VR</TableHead>
-                <TableHead className="text-[10px] uppercase text-stt-faint">Status</TableHead>
+                <TableCell colSpan={5} className="text-[12px] text-stt-muted">
+                  No verification requests visible. Load Demo Data, or open Verification to
+                  create one (brands).
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(myJobs ?? []).length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={2} className="text-[12px] text-stt-muted">
-                    No assignments yet.
+            ) : (
+              hub.requests.map((j) => (
+                <TableRow key={j.id}>
+                  <TableCell className="font-mono-stt text-[11px] text-stt-blue">
+                    {j.request_number}
+                  </TableCell>
+                  <TableCell className="text-[11px]">
+                    <div>{nameById.get(j.buyer_org_id) ?? 'Buyer'}</div>
+                    <div className="text-stt-muted">
+                      → {nameById.get(j.supplier_org_id) ?? 'Supplier'}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-[12px]">{j.verification_type}</TableCell>
+                  <TableCell>
+                    <Badge className={statusClass[j.status] ?? statusClass.open}>
+                      {j.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-mono-stt text-[11px]">
+                    {j.deadline_date ?? '—'}
                   </TableCell>
                 </TableRow>
-              ) : (
-                (myJobs ?? []).map((j) => {
-                  const req = reqById.get(j.request_id);
-                  return (
-                    <TableRow key={j.id}>
-                      <TableCell>
-                        <div className="font-mono-stt text-[11px] text-stt-blue">
-                          {req?.request_number ?? j.request_id.slice(0, 8)}
-                        </div>
-                        <div className="text-[10px] text-stt-muted">
-                          {req?.verification_type}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="rounded-full bg-stt-amber-soft text-stt-amber">
-                          {j.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        <div className="border-t border-stt-line px-4 py-3">
+          <Button asChild className="h-8 rounded-[9px] bg-stt-green text-xs hover:bg-stt-green-dark">
+            <Link href="/verification">Open Verification →</Link>
+          </Button>
         </div>
       </div>
     </PageWrapper>
