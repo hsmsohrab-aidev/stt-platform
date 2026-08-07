@@ -9,7 +9,9 @@
     "dev": "turbo run dev",
     "dev:web": "turbo run dev --filter=web",
     "dev:api": "turbo run dev --filter=api",
-    "build": "turbo run build",
+    "build": "turbo run build --filter=web",
+    "build:all": "turbo run build",
+    "build:api": "turbo run build --filter=api",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck"
   },

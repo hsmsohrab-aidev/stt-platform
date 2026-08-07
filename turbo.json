@@ -1,9 +1,39 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_APP_NAME",
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "API_URL",
+    "API_SECRET_KEY",
+    "PORT",
+    "VERCEL",
+    "VERCEL_URL",
+    "VERCEL_ENV"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", ".vercel/output/**"],
+      "env": [
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_APP_NAME",
+        "RESEND_API_KEY",
+        "EMAIL_FROM",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "API_URL",
+        "API_SECRET_KEY",
+        "PORT",
+        "VERCEL",
+        "VERCEL_URL",
+        "VERCEL_ENV"
+      ]
     },
     "dev": {
       "cache": false,
