@@ -12,6 +12,8 @@ type NavItem = {
 
 const operate: NavItem[] = [
   { href: '/', label: 'Dashboard' },
+  { href: '/brand', label: 'Brand hub' },
+  { href: '/supplier', label: 'Supplier hub' },
   { href: '/orders', label: 'Orders' },
   { href: '/materials', label: 'Materials' },
   { href: '/wallet', label: 'Material Wallet' },
