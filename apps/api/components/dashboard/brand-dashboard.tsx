@@ -69,7 +69,7 @@ export function BrandDashboard({
               <span>{label}</span>
               <span>{hint}</span>
             </div>
-            <div className="mt-1 font-display text-[23px] font-bold text-stt-ink">
+            <div className="mt-1 font-display text-[26px] font-bold text-stt-ink">
               {value}
             </div>
           </div>

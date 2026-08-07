@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type HeaderProps = {
@@ -19,27 +20,27 @@ export function Header({
   return (
     <header
       className={cn(
-        'flex h-[52px] shrink-0 items-center gap-3 border-b border-stt-line bg-stt-card px-4',
+        'flex h-[56px] shrink-0 items-center gap-3 border-b border-stt-line bg-stt-card px-4',
         className
       )}
     >
       <div className="min-w-0 flex-1">
-        <h1 className="font-display text-[15.5px] font-bold tracking-tight text-stt-ink">
+        <h1 className="font-display text-[17px] font-bold tracking-tight text-stt-ink">
           {title}
         </h1>
         {description ? (
-          <p className="truncate text-[11.5px] text-stt-muted">{description}</p>
+          <p className="truncate text-[12.5px] text-stt-muted">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
       <Link
         href="/alerts"
-        className="relative grid size-[34px] place-items-center rounded-[9px] border border-stt-line text-sm hover:bg-[#F8FAFC]"
+        className="relative grid size-[36px] place-items-center rounded-[9px] border border-stt-line text-stt-muted hover:bg-[#F8FAFC] hover:text-stt-ink"
         aria-label="Alerts"
       >
-        <span aria-hidden>🔔</span>
+        <Bell className="size-[16px]" strokeWidth={1.75} aria-hidden />
         {unreadCount > 0 ? (
-          <span className="absolute -right-1 -top-1 rounded-full bg-stt-red px-1 text-[8.5px] font-bold text-white">
+          <span className="absolute -right-1 -top-1 rounded-full bg-stt-red px-1 text-[9px] font-bold text-white">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         ) : null}
