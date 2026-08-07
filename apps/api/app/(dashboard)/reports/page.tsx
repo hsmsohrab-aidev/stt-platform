@@ -2,9 +2,11 @@ import Link from 'next/link';
 import { PrintTcButton } from '@/app/(dashboard)/tc/print-button';
 import {
   DonutChart,
+  FilterBar,
   StatBoxes,
   countBy,
 } from '@/components/charts/stat-charts';
+import { CsvExportButton } from '@/components/reports/csv-export-button';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,12 +19,59 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { requireSessionContext } from '@/lib/auth/session';
+import { loadOrgRiskSnapshot } from '@/lib/risk/derive';
 import { createClient } from '@/lib/supabase/server';
+
+const CATALOG = [
+  {
+    id: 'ops',
+    name: 'Operations summary',
+    category: 'Operational',
+    href: '#ops-pack',
+    format: 'PDF / CSV',
+  },
+  {
+    id: 'risk',
+    name: 'Enterprise risk summary',
+    category: 'Risk',
+    href: '/risk',
+    format: 'Live · CSV',
+  },
+  {
+    id: 'compliance',
+    name: 'Compliance status report',
+    category: 'Compliance',
+    href: '/compliance',
+    format: 'Live',
+  },
+  {
+    id: 'esg',
+    name: 'Sustainability / ESG pack',
+    category: 'ESG',
+    href: '/sustainability',
+    format: 'Live',
+  },
+  {
+    id: 'tc',
+    name: 'Transaction certificate register',
+    category: 'Operational',
+    href: '/tc',
+    format: 'CSV',
+  },
+  {
+    id: 'orders',
+    name: 'Order performance',
+    category: 'Operational',
+    href: '/orders',
+    format: 'CSV',
+  },
+] as const;
 
 export default async function ReportsPage() {
   const ctx = await requireSessionContext();
   const supabase = createClient();
   const orgId = ctx.organizationId;
+  const risk = await loadOrgRiskSnapshot(orgId, ctx.orgType);
 
   const [tcsRes, ordersRes, walletRes, facilitiesRes] = await Promise.all([
     supabase
@@ -67,21 +116,110 @@ export default async function ReportsPage() {
   const generatedAt = new Date().toLocaleString();
   const tcStatusData = countBy(tcs, (tc) => tc.tc_status ?? '—');
   const orderStatusData = countBy(orders, (o) => o.status ?? '—');
+  const catalogByCat = countBy([...CATALOG], (c) => c.category);
+
+  const tcCsvRows = tcs.map((tc) => [
+    tc.tc_number,
+    tc.tc_status,
+    tc.total_quantity,
+    tc.quantity_unit,
+    tc.issue_date,
+  ]);
+  const orderCsvRows = orders.map((o) => [
+    o.order_number,
+    o.po_number,
+    o.status,
+    o.total_quantity,
+    o.quantity_unit,
+  ]);
+  const riskCsvRows = risk.flags.map((f) => [
+    f.severity,
+    f.kind,
+    f.title,
+    f.description,
+    f.href,
+  ]);
 
   return (
     <PageWrapper
-      title="Reports"
-      description="Operations summary · print / save as PDF"
+      title="Reports & Dashboards"
+      description="See clearly · report confidently · export & share"
       actions={
-        <div className="flex items-center gap-2 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
           <PrintTcButton />
+          <CsvExportButton
+            filename={`stt-tcs-${orgId.slice(0, 8)}`}
+            headers={['TC', 'Status', 'Qty', 'Unit', 'Issue date']}
+            rows={tcCsvRows}
+            label="Export TCs CSV"
+          />
+          <CsvExportButton
+            filename={`stt-orders-${orgId.slice(0, 8)}`}
+            headers={['Order', 'PO', 'Status', 'Qty', 'Unit']}
+            rows={orderCsvRows}
+            label="Export Orders CSV"
+          />
+          <CsvExportButton
+            filename={`stt-risk-${orgId.slice(0, 8)}`}
+            headers={['Severity', 'Kind', 'Title', 'Detail', 'Href']}
+            rows={riskCsvRows}
+            label="Export Risk CSV"
+          />
           <Button asChild variant="outline" className="h-8 rounded-[9px] text-xs">
             <Link href="/">Dashboard</Link>
           </Button>
         </div>
       }
     >
-      <article className="space-y-3.5">
+      <FilterBar
+        items={[
+          { label: 'Formats', value: 'PDF · CSV' },
+          { label: 'Catalog', value: `${CATALOG.length} packs` },
+          { label: 'Generated', value: generatedAt.split(',')[0] ?? 'Now' },
+        ]}
+      />
+
+      <StatBoxes
+        items={[
+          { label: 'Report packs', value: CATALOG.length },
+          { label: 'TCs in register', value: tcs.length },
+          { label: 'Orders', value: orders.length },
+          { label: 'Open risk flags', value: risk.openFlagCount },
+        ]}
+      />
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2 print:hidden">
+        <DonutChart title="Catalog by category" data={catalogByCat} />
+        <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+          <div className="border-b border-stt-line px-4 py-3">
+            <h3 className="text-[13.5px] font-bold">Report catalog</h3>
+          </div>
+          <ul className="divide-y divide-stt-line">
+            {CATALOG.map((c) => (
+              <li
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5"
+              >
+                <div>
+                  <div className="text-[12.5px] font-semibold text-stt-ink">{c.name}</div>
+                  <div className="text-[10.5px] text-stt-muted">
+                    {c.category} · {c.format}
+                  </div>
+                </div>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="h-7 rounded-[9px] text-[11px]"
+                >
+                  <Link href={c.href}>Generate</Link>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <article id="ops-pack" className="space-y-3.5">
         <div className="rounded-xl border border-stt-line bg-white p-4 shadow-[var(--stt-shadow)] print:border-0 print:shadow-none">
           <p className="text-[10px] font-semibold uppercase tracking-[1.2px] text-stt-faint">
             STT Platform · Operations summary
@@ -106,14 +244,6 @@ export default async function ReportsPage() {
         </div>
 
         <div className="print:hidden">
-          <StatBoxes
-            items={[
-              { label: 'TCs', value: tcs.length },
-              { label: 'Orders', value: orders.length },
-              { label: 'Facilities', value: facilityCount },
-              { label: 'Wallet lines', value: (balances ?? []).length },
-            ]}
-          />
           <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
             <DonutChart title="TC status mix" data={tcStatusData} />
             <DonutChart title="Order status mix" data={orderStatusData} />
@@ -160,7 +290,7 @@ export default async function ReportsPage() {
         </div>
 
         <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)] print:shadow-none">
-          <div className="border-b border-stt-line px-4 py-3">
+          <div className="flex items-center border-b border-stt-line px-4 py-3">
             <h3 className="text-[12.5px] font-bold">Transaction certificates</h3>
           </div>
           <Table>

@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import type { OrgType } from '@stt/types';
+import { canActAsBrand } from '@/lib/auth/capabilities';
 import { createClient } from '@/lib/supabase/server';
 import { loadOrgRiskSnapshot } from '@/lib/risk/derive';
 
@@ -73,6 +74,8 @@ export const loadOrgSustainabilitySnapshot = cache(
   ): Promise<OrgSustainabilitySnapshot> => {
     const supabase = createClient();
 
+    const brandLike = canActAsBrand(orgType);
+
     const [passportsResult, facilitiesResult, riskSnap, verifiedTcResult, totalTcResult] =
       await Promise.all([
         supabase
@@ -88,7 +91,7 @@ export const loadOrgSustainabilitySnapshot = cache(
           .eq('organization_id', organizationId)
           .limit(50),
         loadOrgRiskSnapshot(organizationId, orgType),
-        orgType === 'brand'
+        brandLike
           ? supabase
               .from('transaction_certificates')
               .select('id', { count: 'exact', head: true })
@@ -99,7 +102,7 @@ export const loadOrgSustainabilitySnapshot = cache(
               .select('id', { count: 'exact', head: true })
               .eq('issuer_org_id', organizationId)
               .eq('tc_status', 'verified'),
-        orgType === 'brand'
+        brandLike
           ? supabase
               .from('transaction_certificates')
               .select('id', { count: 'exact', head: true })

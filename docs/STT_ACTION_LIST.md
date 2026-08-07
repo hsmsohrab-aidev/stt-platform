@@ -167,6 +167,8 @@ Status: `Todo` until you assign.
 ### Sprint 2 — “Decide & comply”
 3. C1–C5 · S1–S4 · M1–M4 · P1r–P2r  
 
+> **Done (2026-08-07):** Compliance Command Center · Sustainability Intelligence (Scope charts + goals + frameworks) · Material Intelligence (risk/100 + regs) · Reports catalog + CSV/print exports.
+
 ### Sprint 3 — “Trust & chain”
 4. V1–V4 · SC1–SC2 · B1 · U1 · U2 · R5  
 
