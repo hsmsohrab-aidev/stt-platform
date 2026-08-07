@@ -36,5 +36,7 @@
 - [x] Org id shown for brand linking / TC receive
 
 ### Step 1.8 — Pilot testing
-- [ ] Two orgs (brand + supplier) end-to-end: link → credit → TC → verify
+- [x] TC verify action for receiver org
+- [x] Pilot script documented (`docs/PILOT_TEST_GUIDE.md`)
+- [ ] Two orgs (brand + supplier) manual E2E run
 - [ ] Collect feedback / fix critical bugs
