@@ -62,8 +62,9 @@ function NavSection({
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               className={cn(
-                'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition',
+                'relative z-10 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition',
                 active
                   ? 'bg-stt-green text-white'
                   : 'text-[#A9BCD1] hover:bg-white/10 hover:text-white'
@@ -93,7 +94,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex w-[198px] shrink-0 flex-col overflow-y-auto bg-stt-navy px-2.5 py-3.5',
+        'relative z-20 flex w-[198px] shrink-0 flex-col overflow-y-auto bg-stt-navy px-2.5 py-3.5',
         className
       )}
     >
