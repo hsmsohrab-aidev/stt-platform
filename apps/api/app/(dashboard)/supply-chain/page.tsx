@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { canActAsBrand } from '@/lib/auth/capabilities';
 import { requireSessionContext } from '@/lib/auth/session';
 import { loadSupplyChainMap } from '@/lib/dashboard/supply-chain';
 import { createClient } from '@/lib/supabase/server';
@@ -18,6 +19,7 @@ import { createClient } from '@/lib/supabase/server';
 export default async function SupplyChainPage() {
   const ctx = await requireSessionContext();
   const supabase = createClient();
+  const brandLike = canActAsBrand(ctx.orgType);
 
   const [nodes, facilitiesResult] = await Promise.all([
     loadSupplyChainMap(ctx),
@@ -33,7 +35,7 @@ export default async function SupplyChainPage() {
     <PageWrapper
       title="Supply Chain"
       description={
-        ctx.orgType === 'brand'
+        brandLike
           ? 'Tier map · linked suppliers → brand'
           : 'Facility chain · declare units to extend the map'
       }
@@ -51,7 +53,7 @@ export default async function SupplyChainPage() {
           </Badge>
         </div>
         <SupplyChainMap nodes={nodes} />
-        {ctx.orgType === 'brand' && nodes.filter((n) => !n.isBrand).length === 0 ? (
+        {brandLike && nodes.filter((n) => !n.isBrand).length === 0 ? (
           <p className="border-t border-stt-line px-4 py-3 text-[11.5px] text-stt-muted">
             Link suppliers from{' '}
             <Link href="/brand" className="font-semibold text-stt-blue underline">

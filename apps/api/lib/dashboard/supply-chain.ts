@@ -1,4 +1,5 @@
 import type { SessionContext } from '@/lib/auth/session';
+import { canActAsBrand } from '@/lib/auth/capabilities';
 import { createClient } from '@/lib/supabase/server';
 
 export type ChainNode = {
@@ -14,7 +15,7 @@ export type ChainNode = {
 export async function loadSupplyChainMap(ctx: SessionContext): Promise<ChainNode[]> {
   const supabase = createClient();
 
-  if (ctx.orgType === 'brand') {
+  if (canActAsBrand(ctx.orgType)) {
     const { data: rels } = await supabase
       .from('supplier_relationships')
       .select('supplier_org_id, tier_level, status')

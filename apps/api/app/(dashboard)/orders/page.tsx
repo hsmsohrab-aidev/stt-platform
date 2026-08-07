@@ -10,11 +10,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { requireSessionContext } from '@/lib/auth/session';
+import { canActAsBrand } from '@/lib/auth/capabilities';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function OrdersPage() {
   const ctx = await requireSessionContext();
   const supabase = createClient();
+  const brandLike = canActAsBrand(ctx.orgType);
 
   const { data: orders } = await supabase
     .from('orders')
@@ -43,7 +45,7 @@ export default async function OrdersPage() {
   const nameById = new Map((orgs ?? []).map((o) => [o.id, o.name]));
 
   let suppliers: { id: string; name: string }[] = [];
-  if (ctx.orgType === 'brand') {
+  if (brandLike) {
     const { data: rels } = await supabase
       .from('supplier_relationships')
       .select('supplier_org_id')
@@ -64,7 +66,7 @@ export default async function OrdersPage() {
     <PageWrapper
       title="Orders"
       description={
-        ctx.orgType === 'brand'
+        brandLike
           ? 'Purchase orders to linked suppliers'
           : 'Incoming / assigned purchase orders'
       }
@@ -130,7 +132,7 @@ export default async function OrdersPage() {
           </Table>
         </div>
 
-        {ctx.orgType === 'brand' ? (
+        {brandLike ? (
           <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
             <div className="border-b border-stt-line px-4 py-3">
               <h3 className="text-[12.5px] font-bold">＋ New purchase order</h3>

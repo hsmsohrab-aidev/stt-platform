@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { requireSessionContext } from '@/lib/auth/session';
+import { canActAsBrand } from '@/lib/auth/capabilities';
 import {
   loadBrandDashboardData,
   loadBuyerNetworkData,
@@ -22,7 +23,7 @@ import {
 export default async function BrandDashboardPage() {
   const ctx = await requireSessionContext();
 
-  if (ctx.orgType === 'brand') {
+  if (canActAsBrand(ctx.orgType)) {
     const data = await loadBrandDashboardData(ctx);
     return (
       <PageWrapper

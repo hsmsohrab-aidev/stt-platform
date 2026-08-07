@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { requireSessionContext } from '@/lib/auth/session';
+import { canActAsAuditor } from '@/lib/auth/capabilities';
 import { loadVerificationHubData } from '@/lib/dashboard/loaders';
 import { createClient } from '@/lib/supabase/server';
 
@@ -37,7 +38,7 @@ export default async function AuditorHubPage() {
       : { data: [] };
   const nameById = new Map((orgs ?? []).map((o) => [o.id, o.name]));
 
-  const isAuditor = ctx.orgType === 'auditor';
+  const isAuditor = canActAsAuditor(ctx.orgType);
 
   const kpis: Array<[string, number, string]> = isAuditor
     ? [

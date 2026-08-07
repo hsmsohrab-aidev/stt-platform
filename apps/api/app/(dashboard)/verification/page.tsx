@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { requireSessionContext } from '@/lib/auth/session';
+import { canActAsAuditor, canActAsBrand } from '@/lib/auth/capabilities';
 import { loadVerificationHubData } from '@/lib/dashboard/loaders';
 import { createClient } from '@/lib/supabase/server';
 
@@ -39,7 +40,7 @@ export default async function VerificationPage() {
   const nameById = new Map((orgs ?? []).map((o) => [o.id, o.name]));
 
   let suppliers: { id: string; name: string }[] = [];
-  if (ctx.orgType === 'brand') {
+  if (canActAsBrand(ctx.orgType)) {
     const { data: rels } = await supabase
       .from('supplier_relationships')
       .select('supplier_org_id')
@@ -68,15 +69,20 @@ export default async function VerificationPage() {
     .limit(20);
   const reportByRequest = new Map((reports ?? []).map((r) => [r.request_id, r]));
 
+  const brandLike = canActAsBrand(ctx.orgType);
+  const auditorLike = canActAsAuditor(ctx.orgType);
+
   return (
     <PageWrapper
       title="Verification"
       description={
-        ctx.orgType === 'auditor'
-          ? 'Marketplace · claim open jobs · publish reports'
-          : ctx.orgType === 'brand'
-            ? 'Request audits on linked suppliers'
-            : 'Verification requests involving your organization'
+        ctx.orgType === 'platform_admin'
+          ? 'Super Admin · create requests and claim marketplace jobs'
+          : auditorLike && !brandLike
+            ? 'Marketplace · claim open jobs · publish reports'
+            : brandLike
+              ? 'Request audits on linked suppliers'
+              : 'Verification requests involving your organization'
       }
     >
       <div className="mb-3.5 grid gap-3 sm:grid-cols-4">
@@ -157,10 +163,10 @@ export default async function VerificationPage() {
                           ) : null}
                         </TableCell>
                         <TableCell>
-                          {ctx.orgType === 'auditor' && r.status === 'open' ? (
+                          {auditorLike && r.status === 'open' ? (
                             <ClaimRequestButton requestId={r.id} />
                           ) : null}
-                          {ctx.orgType === 'auditor' &&
+                          {auditorLike &&
                           assignment &&
                           assignment.status !== 'completed' &&
                           (r.status === 'in_progress' || r.status === 'assigned') ? (
@@ -168,7 +174,7 @@ export default async function VerificationPage() {
                               Yours · complete →
                             </span>
                           ) : null}
-                          {ctx.orgType !== 'auditor' ? (
+                          {!auditorLike ? (
                             <span className="text-[11px] text-stt-muted">View only</span>
                           ) : null}
                         </TableCell>
@@ -180,7 +186,7 @@ export default async function VerificationPage() {
             </Table>
           </div>
 
-          {ctx.orgType === 'auditor'
+          {auditorLike
             ? myAssignments
                 .filter((a) => a.status !== 'completed')
                 .map((a) => (
@@ -199,7 +205,7 @@ export default async function VerificationPage() {
         </div>
 
         <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
-          {ctx.orgType === 'brand' ? (
+          {brandLike ? (
             <>
               <div className="border-b border-stt-line px-4 py-3">
                 <h3 className="text-[12.5px] font-bold">＋ New request</h3>
@@ -210,7 +216,7 @@ export default async function VerificationPage() {
             </>
           ) : (
             <div className="p-4 text-[12px] leading-relaxed text-stt-muted">
-              {ctx.orgType === 'auditor'
+              {auditorLike
                 ? 'Claim open requests from the list, then publish an audit report.'
                 : 'You see every verification that lists your org as supplier (or buyer). Brands create new requests; auditors claim and complete them.'}
             </div>

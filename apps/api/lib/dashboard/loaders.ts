@@ -241,7 +241,7 @@ export async function loadVerificationHubData(ctx: SessionContext) {
     .order('created_at', { ascending: false })
     .limit(50);
 
-  if (ctx.orgType === 'auditor') {
+  if (ctx.orgType === 'auditor' || ctx.orgType === 'platform_admin') {
     // Marketplace + assigned — RLS already scopes; keep open/active visible
   } else {
     requestQuery = requestQuery.or(
@@ -258,7 +258,7 @@ export async function loadVerificationHubData(ctx: SessionContext) {
   const doneCount = (requests ?? []).filter((r) => r.status === 'completed').length;
 
   let myAssignments: { id: string; request_id: string; status: string }[] = [];
-  if (ctx.orgType === 'auditor') {
+  if (ctx.orgType === 'auditor' || ctx.orgType === 'platform_admin') {
     const { data } = await supabase
       .from('verification_assignments')
       .select('id, request_id, status')

@@ -5,6 +5,7 @@ import { SupplierDashboard } from '@/components/dashboard/supplier-dashboard';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { canActAsBrand } from '@/lib/auth/capabilities';
 import { requireSessionContext } from '@/lib/auth/session';
 import {
   loadBrandDashboardData,
@@ -17,14 +18,19 @@ export default async function HomePage() {
   const ctx = await requireSessionContext();
   const overview = await loadInteractiveOverview(ctx);
 
-  if (ctx.orgType === 'brand') {
+  if (canActAsBrand(ctx.orgType)) {
     const data = await loadBrandDashboardData(ctx);
     return (
       <PageWrapper
         title="Executive Overview"
-        description={`${ctx.orgName} · Brand workspace · live map & journey`}
+        description={`${ctx.orgName} · ${ctx.orgType === 'platform_admin' ? 'Super Admin' : 'Brand'} · live map & journey`}
         actions={
           <div className="flex items-center gap-2">
+            {ctx.orgType === 'platform_admin' ? (
+              <Badge className="rounded-full bg-stt-purple-soft text-stt-purple">
+                Super Admin
+              </Badge>
+            ) : null}
             <Button
               asChild
               variant="outline"

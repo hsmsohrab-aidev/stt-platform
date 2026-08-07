@@ -35,8 +35,8 @@ export async function createOrderAction(
 
   const { supabase, organizationId, orgType } = await requireActionContext();
 
-  if (orgType !== 'brand') {
-    return { error: 'Only brand organizations can create purchase orders.' };
+  if (orgType !== 'brand' && orgType !== 'platform_admin') {
+    return { error: 'Only brand / platform admin can create purchase orders.' };
   }
 
   const number = orderNumber();

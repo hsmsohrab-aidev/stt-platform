@@ -20,8 +20,8 @@ export async function linkSupplierAction(
 
   const { supabase, organizationId, orgType } = await requireActionContext();
 
-  if (orgType !== 'brand') {
-    return { error: 'Only brand organizations can link suppliers.' };
+  if (orgType !== 'brand' && orgType !== 'platform_admin') {
+    return { error: 'Only brand / platform admin can link suppliers.' };
   }
 
   const { data: supplierOrg } = await supabase

@@ -26,8 +26,8 @@ export async function createVerificationRequestAction(
   const { supabase, organizationId, orgType, userId } =
     await requireActionContext();
 
-  if (orgType !== 'brand') {
-    return { error: 'Only brand organizations can request verification.' };
+  if (orgType !== 'brand' && orgType !== 'platform_admin') {
+    return { error: 'Only brand / platform admin can request verification.' };
   }
 
   const standards = standardsRaw
@@ -87,8 +87,8 @@ export async function claimVerificationAction(
   const { supabase, organizationId, orgType, userId } =
     await requireActionContext();
 
-  if (orgType !== 'auditor') {
-    return { error: 'Only auditor organizations can claim requests.' };
+  if (orgType !== 'auditor' && orgType !== 'platform_admin') {
+    return { error: 'Only auditors can claim verification requests.' };
   }
 
   const { data: req } = await supabase
@@ -141,7 +141,9 @@ export async function completeVerificationAction(
   if (!title) return { error: 'Report title is required.' };
 
   const { supabase, organizationId, orgType } = await requireActionContext();
-  if (orgType !== 'auditor') return { error: 'Auditors only.' };
+  if (orgType !== 'auditor' && orgType !== 'platform_admin') {
+    return { error: 'Auditors only.' };
+  }
 
   const { error: reportError } = await supabase.from('audit_reports').insert({
     assignment_id: assignmentId,
