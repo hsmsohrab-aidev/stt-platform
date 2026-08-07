@@ -1,21 +1,13 @@
 import Link from 'next/link';
 import { logoutAction } from '@/app/(auth)/actions';
-import { BrandDashboard } from '@/components/dashboard/brand-dashboard';
+import { InsightCard, StatBoxes } from '@/components/charts/stat-charts';
 import { InteractiveOverview } from '@/components/dashboard/interactive-overview';
-import { SupplierDashboard } from '@/components/dashboard/supplier-dashboard';
-import {
-  InsightCard,
-  StatBoxes,
-} from '@/components/charts/stat-charts';
+import { HubBanner } from '@/components/layout/hub-banner';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { canActAsBrand } from '@/lib/auth/capabilities';
 import { requireSessionContext } from '@/lib/auth/session';
-import {
-  loadBrandDashboardData,
-  loadSupplierDashboardData,
-} from '@/lib/dashboard/loaders';
 import { loadInteractiveOverview } from '@/lib/dashboard/overview';
 import { loadOrgRiskSnapshot } from '@/lib/risk/derive';
 import { loadOrgSustainabilitySnapshot } from '@/lib/sustainability/derive';
@@ -24,12 +16,7 @@ import { redirect } from 'next/navigation';
 
 async function loadExecKpis(orgId: string, orgType: string) {
   const supabase = createClient();
-  const [
-    { data: orders },
-    { data: shipments },
-    risk,
-    sust,
-  ] = await Promise.all([
+  const [{ data: orders }, { data: shipments }, risk, sust] = await Promise.all([
     supabase
       .from('orders')
       .select('id, status, total_quantity')
@@ -70,7 +57,6 @@ async function loadExecKpis(orgId: string, orgType: string) {
     (s, o) => s + Number(o.total_quantity ?? 0),
     0
   );
-  // Proxy spend until unit prices are complete — labeled as volume proxy
   const spendProxy = Math.round(qtyTotal * 4.85);
 
   return {
@@ -86,6 +72,8 @@ async function loadExecKpis(orgId: string, orgType: string) {
 
 export default async function HomePage() {
   const ctx = await requireSessionContext();
+  if (ctx.orgType === 'auditor') redirect('/auditor');
+
   const overview = await loadInteractiveOverview(ctx);
   const kpis = await loadExecKpis(ctx.organizationId, ctx.orgType);
 
@@ -98,37 +86,87 @@ export default async function HomePage() {
     : kpis.exceptionShips > 0
       ? {
           title: `${kpis.exceptionShips} shipment exception(s)`,
-          body: 'Review exception queue in Order Intelligence and clear delays before ETA slips.',
+          body: 'Clear delays in Order Intelligence before ETA slips.',
           href: '/orders',
         }
       : {
-          title: 'Supply chain operating normally',
-          body: 'No critical risk flags. Keep verifying inbound TCs and publishing passports.',
+          title: 'Operating normally',
+          body: 'No critical flags. Open a hub below for role work.',
           href: '/risk',
         };
 
-  const kpiStrip = (
-    <>
+  const hubLinks = canActAsBrand(ctx.orgType)
+    ? [
+        { href: '/brand', label: 'Brand hub' },
+        { href: '/supplier', label: 'Supplier floor' },
+        { href: '/auditor', label: 'Auditor desk' },
+        { href: '/orders', label: 'Orders' },
+      ]
+    : ctx.orgType === 'supplier'
+      ? [
+          { href: '/supplier', label: 'Supplier floor' },
+          { href: '/wallet', label: 'Wallet' },
+          { href: '/tc', label: 'TCs' },
+          { href: '/facilities', label: 'Facilities' },
+        ]
+      : [
+          { href: '/orders', label: 'Orders' },
+          { href: '/risk', label: 'Risk' },
+        ];
+
+  return (
+    <PageWrapper
+      title="Dashboard"
+      description="One glance · live map · go to the right hub for work"
+      actions={
+        <div className="flex items-center gap-2">
+          {ctx.orgType === 'platform_admin' ? (
+            <Badge className="rounded-full bg-stt-purple-soft text-stt-purple">
+              Super Admin
+            </Badge>
+          ) : null}
+          <form action={logoutAction}>
+            <Button
+              type="submit"
+              variant="outline"
+              className="h-8 rounded-[9px] text-xs font-semibold"
+            >
+              Sign out
+            </Button>
+          </form>
+        </div>
+      }
+    >
+      <HubBanner
+        tone="exec"
+        title={ctx.orgName}
+        subtitle="This page is the executive cockpit only — map, KPIs, and one insight. Role work lives in Brand / Supplier / Auditor hubs."
+        links={hubLinks}
+        stats={[
+          { label: 'On-time', value: `${kpis.onTimePct}%` },
+          { label: 'Orders', value: kpis.orderCount },
+          { label: 'High risk', value: kpis.highRisk },
+        ]}
+      />
+
       <StatBoxes
         items={[
-          { label: 'On-time signal', value: `${kpis.onTimePct}%` },
-          { label: 'Total orders', value: kpis.orderCount },
           {
             label: 'Volume proxy',
             value: `$${(kpis.spendProxy / 1000).toFixed(1)}k`,
             hint: 'qty × rate',
           },
-          { label: 'High risk', value: kpis.highRisk },
+          {
+            label: 'CO₂e (passports)',
+            value: kpis.co2e > 0 ? kpis.co2e.toLocaleString() : '—',
+            hint: 'kg',
+          },
+          { label: 'Exceptions', value: kpis.exceptionShips },
+          { label: 'Map pins', value: overview.pins.length },
         ]}
       />
-      <div className="mb-3.5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-stt-line bg-white p-3.5 shadow-[var(--stt-shadow)]">
-          <div className="text-[11px] font-semibold text-stt-muted">CO₂e (passport sum)</div>
-          <div className="mt-1 font-display text-[24px] font-bold text-stt-ink">
-            {kpis.co2e > 0 ? kpis.co2e.toLocaleString() : '—'}
-            <span className="ml-1 text-[12px] font-normal text-stt-muted">kg</span>
-          </div>
-        </div>
+
+      <div className="mb-3.5">
         <InsightCard
           title={insight.title}
           body={insight.body}
@@ -136,122 +174,25 @@ export default async function HomePage() {
           hrefLabel="Investigate →"
         />
       </div>
-    </>
-  );
 
-  if (canActAsBrand(ctx.orgType)) {
-    const data = await loadBrandDashboardData(ctx);
-    return (
-      <PageWrapper
-        title="Executive Overview"
-        description={`${ctx.orgName} · ${ctx.orgType === 'platform_admin' ? 'Super Admin' : 'Brand'} · insights & journey`}
-        actions={
-          <div className="flex items-center gap-2">
-            {ctx.orgType === 'platform_admin' ? (
-              <Badge className="rounded-full bg-stt-purple-soft text-stt-purple">
-                Super Admin
-              </Badge>
-            ) : null}
-            <Button
-              asChild
-              variant="outline"
-              className="h-8 rounded-[9px] text-xs font-semibold"
-            >
-              <Link href="/brand">Brand hub</Link>
-            </Button>
-            <form action={logoutAction}>
-              <Button
-                type="submit"
-                variant="outline"
-                className="h-8 rounded-[9px] text-xs font-semibold"
-              >
-                Sign out
-              </Button>
-            </form>
-          </div>
-        }
-      >
-        {kpiStrip}
-        <div className="mb-3.5">
-          <InteractiveOverview {...overview} />
-        </div>
-        <BrandDashboard
-          orgName={ctx.orgName}
-          orgId={ctx.organizationId}
-          summary={data.summary}
-          suppliers={data.suppliers}
-          recentTcs={data.recentTcs}
-        />
-      </PageWrapper>
-    );
-  }
+      <InteractiveOverview {...overview} />
 
-  if (ctx.orgType === 'supplier') {
-    const data = await loadSupplierDashboardData(ctx);
-    return (
-      <PageWrapper
-        title="Executive Overview"
-        description={`${ctx.orgName} · Supplier workspace · live map & journey`}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button
-              asChild
-              variant="outline"
-              className="h-8 rounded-[9px] text-xs font-semibold"
-            >
-              <Link href="/supplier">Supplier hub</Link>
-            </Button>
-            <form action={logoutAction}>
-              <Button
-                type="submit"
-                variant="outline"
-                className="h-8 rounded-[9px] text-xs font-semibold"
-              >
-                Sign out
-              </Button>
-            </form>
-          </div>
-        }
-      >
-        {kpiStrip}
-        <div className="mb-3.5">
-          <InteractiveOverview {...overview} />
-        </div>
-        <SupplierDashboard
-          orgName={ctx.orgName}
-          orgId={ctx.organizationId}
-          summary={data.summary}
-          facilities={data.facilities}
-          recentTcs={data.recentTcs}
-        />
-      </PageWrapper>
-    );
-  }
-
-  if (ctx.orgType === 'auditor') {
-    redirect('/auditor');
-  }
-
-  return (
-    <PageWrapper
-      title="Workspace"
-      description={`${ctx.orgName} · ${ctx.orgType}`}
-      actions={
-        <form action={logoutAction}>
-          <Button
-            type="submit"
-            variant="outline"
-            className="h-8 rounded-[9px] text-xs font-semibold"
-          >
-            Sign out
-          </Button>
-        </form>
-      }
-    >
-      {kpiStrip}
-      <div className="mb-3.5">
-        <InteractiveOverview {...overview} />
-      </div>
+      <p className="mt-3.5 text-center text-[11px] text-stt-muted">
+        Need supplier network?{' '}
+        <Link href="/brand" className="font-semibold text-stt-blue hover:underline">
+          Brand hub
+        </Link>
+        {' · '}
+        factory floor?{' '}
+        <Link href="/supplier" className="font-semibold text-stt-blue hover:underline">
+          Supplier hub
+        </Link>
+        {' · '}
+        audits?{' '}
+        <Link href="/auditor" className="font-semibold text-stt-blue hover:underline">
+          Auditor hub
+        </Link>
+      </p>
     </PageWrapper>
   );
 }

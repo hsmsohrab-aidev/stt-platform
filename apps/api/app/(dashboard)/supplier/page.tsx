@@ -1,131 +1,58 @@
 import Link from 'next/link';
 import { logoutAction } from '@/app/(auth)/actions';
-import {
-  BarChart,
-  DonutChart,
-  StatBoxes,
-  countBy,
-} from '@/components/charts/stat-charts';
-import { InteractiveOverview } from '@/components/dashboard/interactive-overview';
-import { SupplierDashboard } from '@/components/dashboard/supplier-dashboard';
+import { HubBanner } from '@/components/layout/hub-banner';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { canActAsBrand, canActAsSupplier } from '@/lib/auth/capabilities';
 import { requireSessionContext } from '@/lib/auth/session';
 import {
   loadBrandDashboardData,
   loadSupplierDashboardData,
 } from '@/lib/dashboard/loaders';
-import { loadInteractiveOverview } from '@/lib/dashboard/overview';
 import { createClient } from '@/lib/supabase/server';
+import {
+  Factory,
+  FileBadge2,
+  MapPin,
+  Package,
+  Wallet,
+  Warehouse,
+} from 'lucide-react';
 
 export default async function SupplierDashboardPage() {
   const ctx = await requireSessionContext();
-  const overview = await loadInteractiveOverview(ctx);
   const supplierLike = canActAsSupplier(ctx.orgType);
   const brandLike = canActAsBrand(ctx.orgType);
 
-  // Pure supplier org
-  if (ctx.orgType === 'supplier') {
-    const data = await loadSupplierDashboardData(ctx);
-    return (
-      <PageWrapper
-        title="Supplier Hub"
-        description={`${ctx.orgName} · facilities · wallet · issued TCs`}
-        actions={
-          <form action={logoutAction}>
-            <Button
-              type="submit"
-              variant="outline"
-              className="h-8 rounded-[9px] text-xs font-semibold"
-            >
-              Sign out
-            </Button>
-          </form>
-        }
-      >
-        <div className="mb-3.5">
-          <InteractiveOverview {...overview} />
-        </div>
-        <SupplierDashboard
-          orgName={ctx.orgName}
-          orgId={ctx.organizationId}
-          summary={data.summary}
-          facilities={data.facilities}
-          recentTcs={data.recentTcs}
-        />
-      </PageWrapper>
-    );
-  }
-
-  // Super Admin / brand: own ops + linked supplier network
-  if (brandLike || supplierLike) {
-    const [own, brandNet] = await Promise.all([
-      loadSupplierDashboardData(ctx),
-      loadBrandDashboardData(ctx),
-    ]);
-    const supabase = createClient();
-
-    const supplierIds = brandNet.suppliers.map((s) => s.supplier_org_id);
-    const [{ data: partnerFacilities }, { data: inboundOrders }] = await Promise.all([
-      supplierIds.length
-        ? supabase
-            .from('facilities')
-            .select('id, name, facility_type, tier_level, city, country, organization_id, is_verified')
-            .in('organization_id', supplierIds)
-            .eq('is_active', true)
-            .order('created_at', { ascending: false })
-            .limit(40)
-        : Promise.resolve({ data: [] as Array<{
-            id: string;
-            name: string;
-            facility_type: string;
-            tier_level: string | null;
-            city: string | null;
-            country: string | null;
-            organization_id: string;
-            is_verified: boolean;
-          }> }),
-      supabase
-        .from('orders')
-        .select(
-          'id, order_number, po_number, status, total_quantity, quantity_unit, supplier_org_id'
-        )
-        .eq('buyer_org_id', ctx.organizationId)
-        .order('created_at', { ascending: false })
-        .limit(25),
-    ]);
-
-    const nameBySupplier = new Map(
-      brandNet.suppliers.map((s) => {
-        const org = s.organizations;
-        const name = Array.isArray(org) ? org[0]?.name : org?.name;
-        return [s.supplier_org_id, name ?? 'Supplier'] as const;
-      })
-    );
-
-    const tierData = countBy(brandNet.suppliers, (s) => s.tier_level ?? '—');
-    const facTypeData = countBy(own.facilities, (f) => f.facility_type ?? '—');
-    const partnerFacType = countBy(partnerFacilities ?? [], (f) => f.facility_type ?? '—');
+  async function renderFloor(opts: {
+    own: Awaited<ReturnType<typeof loadSupplierDashboardData>>;
+    partnerFacilities?: Array<{
+      id: string;
+      name: string;
+      facility_type: string;
+      tier_level: string | null;
+      city: string | null;
+      country: string | null;
+      organization_id: string;
+      is_verified: boolean;
+    }>;
+    nameBySupplier?: Map<string, string>;
+    showNetworkNote?: boolean;
+  }) {
+    const { own, partnerFacilities = [], nameBySupplier, showNetworkNote } = opts;
+    const walletLines = own.summary.walletBalance;
+    const availableKg = walletLines.reduce((s, w) => s + w.available_qty, 0);
 
     return (
       <PageWrapper
         title="Supplier Hub"
-        description={`${ctx.orgName} · your units + linked supplier network`}
+        description="Factory floor · wallet · issued TCs — not the home map"
         actions={
           <div className="flex items-center gap-2">
             {ctx.orgType === 'platform_admin' ? (
-              <Badge className="rounded-full bg-stt-purple-soft text-stt-purple">
-                Super Admin
+              <Badge className="rounded-full bg-stt-amber-soft text-stt-amber">
+                Super Admin view
               </Badge>
             ) : null}
             <form action={logoutAction}>
@@ -140,190 +67,239 @@ export default async function SupplierDashboardPage() {
           </div>
         }
       >
-        <div className="mb-3.5">
-          <InteractiveOverview {...overview} />
-        </div>
-
-        <StatBoxes
-          items={[
-            { label: 'Own facilities', value: own.facilities.length },
-            { label: 'Linked suppliers', value: brandNet.suppliers.length },
-            { label: 'Partner facilities', value: (partnerFacilities ?? []).length },
-            { label: 'Issued TCs (you)', value: own.summary.issuedTCs },
+        <HubBanner
+          tone="supplier"
+          title="Factory floor"
+          subtitle="Facilities, material wallet and certificates you issue. Different from Brand Hub (buying network) and Dashboard (map)."
+          links={[
+            { href: '/facilities', label: 'Facilities' },
+            { href: '/wallet', label: 'Wallet' },
+            { href: '/tc', label: 'Issue TC' },
+            { href: '/orders', label: 'Inbound PO' },
+          ]}
+          stats={[
+            { label: 'Units', value: own.facilities.length },
+            { label: 'Wallet KG', value: Math.round(availableKg).toLocaleString() },
+            { label: 'Issued TC', value: own.summary.issuedTCs },
+            { label: 'Pending PO', value: own.summary.pendingOrders },
           ]}
         />
 
-        <div className="mb-3.5 grid gap-3.5 lg:grid-cols-3">
-          <DonutChart title="Your facility types" data={facTypeData} />
-          <DonutChart title="Supplier tiers" data={tierData} />
-          <BarChart title="Partner facility mix" data={partnerFacType} />
+        {showNetworkNote ? (
+          <p className="mb-3.5 rounded-xl border border-[#F0D9A8] bg-[#FFF8EC] px-3 py-2 text-[11.5px] text-stt-amber">
+            Super Admin / Brand: this floor shows <b>your org units + wallet</b>. Partner
+            plants appear below as a separate strip — buying relationships stay in{' '}
+            <Link href="/brand" className="font-semibold underline">
+              Brand hub
+            </Link>
+            .
+          </p>
+        ) : null}
+
+        {/* Wallet strip — unique to supplier */}
+        <div className="mb-3.5 overflow-hidden rounded-2xl border border-[#E8C98A] bg-[linear-gradient(90deg,#FFF9F0,#FFFFFF)] shadow-[var(--stt-shadow)]">
+          <div className="flex items-center gap-2 border-b border-[#F0D9A8] px-4 py-3">
+            <Wallet className="size-4 text-stt-amber" />
+            <h3 className="text-[13.5px] font-bold text-stt-ink">Material wallet strip</h3>
+            <Link
+              href="/wallet"
+              className="ml-auto text-[11px] font-semibold text-stt-amber hover:underline"
+            >
+              Open wallet →
+            </Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto px-4 py-4">
+            {walletLines.length === 0 ? (
+              <p className="text-[12px] text-stt-muted">
+                No balances — credit opening stock in Wallet.
+              </p>
+            ) : (
+              walletLines.map((w, i) => (
+                <div
+                  key={`${w.material}-${i}`}
+                  className="w-[140px] shrink-0 rounded-xl border border-[#F0D9A8] bg-white px-3 py-3"
+                >
+                  <div className="truncate text-[11px] font-semibold text-stt-muted">
+                    {w.material}
+                  </div>
+                  <div className="mt-1 font-display text-[20px] font-bold text-stt-ink">
+                    {w.available_qty.toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-stt-faint">{w.unit} available</div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
-        <div className="mb-3.5">
-          <SupplierDashboard
-            orgName={ctx.orgName}
-            orgId={ctx.organizationId}
-            summary={own.summary}
-            facilities={own.facilities}
-            recentTcs={own.recentTcs}
-          />
+        {/* Facility tiles */}
+        <div className="mb-2 flex items-center gap-2">
+          <Warehouse className="size-4 text-stt-amber" />
+          <h3 className="text-[14px] font-bold text-stt-navy">Your facilities</h3>
         </div>
+        {own.facilities.length === 0 ? (
+          <div className="mb-3.5 rounded-2xl border border-dashed border-[#E8C98A] bg-[#FFF8EC] px-4 py-8 text-center text-[13px] text-stt-muted">
+            Declare a unit in{' '}
+            <Link href="/facilities" className="font-semibold text-stt-blue underline">
+              Facilities
+            </Link>
+            .
+          </div>
+        ) : (
+          <div className="mb-3.5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {own.facilities.map((f) => (
+              <Link
+                key={f.id}
+                href={`/facilities/${f.id}`}
+                className="rounded-2xl border border-stt-line bg-white p-4 shadow-[var(--stt-shadow)] transition hover:border-stt-amber/50"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="grid size-10 place-items-center rounded-xl bg-[#FFF1D6] text-stt-amber">
+                    <Factory className="size-5" strokeWidth={1.75} />
+                  </div>
+                  {f.is_verified ? (
+                    <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">
+                      Verified
+                    </Badge>
+                  ) : (
+                    <Badge className="rounded-full bg-[#EDF1F6] text-stt-muted">
+                      Declared
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-3 text-[14px] font-bold text-stt-ink">{f.name}</div>
+                <div className="mt-1 flex items-center gap-1 text-[11px] text-stt-muted">
+                  <MapPin className="size-3" />
+                  {[f.city, f.facility_type].filter(Boolean).join(' · ') || '—'}
+                </div>
+                <div className="font-mono-stt mt-1 text-[10px] text-stt-faint">
+                  {f.tier_level ?? 'tier —'}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
 
         <div className="grid gap-3.5 lg:grid-cols-2">
-          <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
-            <div className="flex items-center border-b border-stt-line px-4 py-3">
-              <h3 className="text-[13.5px] font-bold">Linked suppliers</h3>
+          <div className="rounded-2xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+            <div className="flex items-center gap-2 border-b border-stt-line px-4 py-3">
+              <FileBadge2 className="size-4 text-stt-green-dark" />
+              <h3 className="text-[13.5px] font-bold">TCs you issued</h3>
               <Link
-                href="/brand"
+                href="/tc"
                 className="ml-auto text-[11px] font-semibold text-stt-blue hover:underline"
               >
-                Brand hub →
+                All →
               </Link>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[10px] uppercase text-stt-faint">Supplier</TableHead>
-                  <TableHead className="text-[10px] uppercase text-stt-faint">Tier</TableHead>
-                  <TableHead className="text-[10px] uppercase text-stt-faint">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {brandNet.suppliers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-[12px] text-stt-muted">
-                      No suppliers linked yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  brandNet.suppliers.map((s) => {
-                    const org = s.organizations;
-                    const name = Array.isArray(org) ? org[0]?.name : org?.name;
-                    return (
-                      <TableRow key={s.id} className="hover:bg-[#F7FAFC]">
-                        <TableCell className="text-[12px] font-semibold text-stt-ink">
-                          {name ?? s.supplier_org_id.slice(0, 8)}
-                        </TableCell>
-                        <TableCell className="font-mono-stt text-[11px]">
-                          {s.tier_level}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">
-                            {s.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
+            <ul className="divide-y divide-stt-line">
+              {own.recentTcs.length === 0 ? (
+                <li className="px-4 py-6 text-[12px] text-stt-muted">No issued TCs yet.</li>
+              ) : (
+                own.recentTcs.map((tc) => (
+                  <li
+                    key={tc.id}
+                    className="flex items-center justify-between gap-2 px-4 py-2.5"
+                  >
+                    <div>
+                      <Link
+                        href={`/tc/${tc.id}`}
+                        className="font-mono-stt text-[11px] text-stt-blue hover:underline"
+                      >
+                        {tc.tc_number}
+                      </Link>
+                      <div className="text-[10px] text-stt-muted">{tc.issue_date}</div>
+                    </div>
+                    <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">
+                      {tc.tc_status}
+                    </Badge>
+                  </li>
+                ))
+              )}
+            </ul>
           </div>
 
-          <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
-            <div className="flex items-center border-b border-stt-line px-4 py-3">
-              <h3 className="text-[13.5px] font-bold">Partner facilities</h3>
-              <Link
-                href="/supply-chain"
-                className="ml-auto text-[11px] font-semibold text-stt-blue hover:underline"
-              >
-                Map →
-              </Link>
+          {partnerFacilities.length > 0 ? (
+            <div className="rounded-2xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+              <div className="flex items-center gap-2 border-b border-stt-line px-4 py-3">
+                <Package className="size-4 text-stt-navy" />
+                <h3 className="text-[13.5px] font-bold">Partner plants (linked)</h3>
+              </div>
+              <ul className="divide-y divide-stt-line">
+                {partnerFacilities.slice(0, 10).map((f) => (
+                  <li key={f.id} className="px-4 py-2.5">
+                    <div className="text-[12px] font-semibold">{f.name}</div>
+                    <div className="text-[10px] text-stt-muted">
+                      {nameBySupplier?.get(f.organization_id) ?? 'Partner'}
+                      {' · '}
+                      {[f.city, f.country].filter(Boolean).join(', ') || f.facility_type}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[10px] uppercase text-stt-faint">Facility</TableHead>
-                  <TableHead className="text-[10px] uppercase text-stt-faint">Supplier</TableHead>
-                  <TableHead className="text-[10px] uppercase text-stt-faint">Loc</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(partnerFacilities ?? []).length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-[12px] text-stt-muted">
-                      Partners have not declared facilities yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (partnerFacilities ?? []).map((f) => (
-                    <TableRow key={f.id} className="hover:bg-[#F7FAFC]">
-                      <TableCell>
-                        <div className="text-[12px] font-semibold">{f.name}</div>
-                        <div className="text-[10px] text-stt-muted">{f.facility_type}</div>
-                      </TableCell>
-                      <TableCell className="text-[11px] text-stt-muted">
-                        {nameBySupplier.get(f.organization_id) ?? '—'}
-                      </TableCell>
-                      <TableCell className="text-[11px] text-stt-muted">
-                        {[f.city, f.country].filter(Boolean).join(', ') || '—'}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)] lg:col-span-2">
-            <div className="flex items-center border-b border-stt-line px-4 py-3">
-              <h3 className="text-[13.5px] font-bold">Orders to suppliers</h3>
-              <Link
-                href="/orders"
-                className="ml-auto text-[11px] font-semibold text-stt-blue hover:underline"
-              >
-                All orders →
+          ) : (
+            <div className="rounded-2xl border border-dashed border-stt-line bg-[#F8FAFC] px-4 py-8 text-center text-[12px] text-stt-muted">
+              Compliance tasks open: {own.summary.complianceTasks} · high signals:{' '}
+              {own.summary.overdueTasksCount}. Check{' '}
+              <Link href="/risk" className="font-semibold text-stt-blue underline">
+                Risk
               </Link>
+              .
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[10px] uppercase text-stt-faint">Order</TableHead>
-                  <TableHead className="text-[10px] uppercase text-stt-faint">Supplier</TableHead>
-                  <TableHead className="text-[10px] uppercase text-stt-faint">Qty</TableHead>
-                  <TableHead className="text-[10px] uppercase text-stt-faint">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(inboundOrders ?? []).length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-[12px] text-stt-muted">
-                      No purchase orders.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (inboundOrders ?? []).map((o) => (
-                    <TableRow key={o.id} className="hover:bg-[#F7FAFC]">
-                      <TableCell>
-                        <Link
-                          href={`/orders/${o.id}`}
-                          className="font-mono-stt text-[11px] text-stt-blue hover:underline"
-                        >
-                          {o.po_number ?? o.order_number}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-[12px]">
-                        {o.supplier_org_id
-                          ? nameBySupplier.get(o.supplier_org_id) ?? '—'
-                          : '—'}
-                      </TableCell>
-                      <TableCell className="font-mono-stt text-[11px]">
-                        {Number(o.total_quantity ?? 0).toLocaleString()} {o.quantity_unit}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="rounded-full bg-stt-blue-soft text-stt-blue">
-                          {o.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          )}
         </div>
       </PageWrapper>
     );
+  }
+
+  if (ctx.orgType === 'supplier') {
+    const own = await loadSupplierDashboardData(ctx);
+    return renderFloor({ own });
+  }
+
+  if (brandLike || supplierLike) {
+    const [own, brandNet] = await Promise.all([
+      loadSupplierDashboardData(ctx),
+      loadBrandDashboardData(ctx),
+    ]);
+    const supabase = createClient();
+    const supplierIds = brandNet.suppliers.map((s) => s.supplier_org_id);
+    const { data: partnerFacilities } = supplierIds.length
+      ? await supabase
+          .from('facilities')
+          .select(
+            'id, name, facility_type, tier_level, city, country, organization_id, is_verified'
+          )
+          .in('organization_id', supplierIds)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(40)
+      : { data: [] as Array<{
+          id: string;
+          name: string;
+          facility_type: string;
+          tier_level: string | null;
+          city: string | null;
+          country: string | null;
+          organization_id: string;
+          is_verified: boolean;
+        }> };
+
+    const nameBySupplier = new Map(
+      brandNet.suppliers.map((s) => {
+        const org = s.organizations;
+        const name = Array.isArray(org) ? org[0]?.name : org?.name;
+        return [s.supplier_org_id, name ?? 'Supplier'] as const;
+      })
+    );
+
+    return renderFloor({
+      own,
+      partnerFacilities: partnerFacilities ?? [],
+      nameBySupplier,
+      showNetworkNote: true,
+    });
   }
 
   return (
@@ -335,9 +311,9 @@ export default async function SupplierDashboardPage() {
         </Link>{' '}
         or{' '}
         <Link href="/tc" className="font-semibold text-stt-blue hover:underline">
-          Transaction Certificates
-        </Link>{' '}
-        from the sidebar.
+          TC
+        </Link>
+        .
       </div>
     </PageWrapper>
   );

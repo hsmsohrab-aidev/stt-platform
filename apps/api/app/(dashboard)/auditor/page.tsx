@@ -1,33 +1,27 @@
 import Link from 'next/link';
 import { logoutAction } from '@/app/(auth)/actions';
-import {
-  DonutChart,
-  JourneyStrip,
-  StatBoxes,
-  countBy,
-} from '@/components/charts/stat-charts';
+import { JourneyStrip } from '@/components/charts/stat-charts';
+import { HubBanner } from '@/components/layout/hub-banner';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { canActAsAuditor, canActAsBrand } from '@/lib/auth/capabilities';
 import { requireSessionContext } from '@/lib/auth/session';
 import { loadVerificationHubData } from '@/lib/dashboard/loaders';
 import { createClient } from '@/lib/supabase/server';
+import {
+  ClipboardCheck,
+  FileText,
+  Inbox,
+  ShieldCheck,
+} from 'lucide-react';
 
 const statusClass: Record<string, string> = {
-  open: 'rounded-full bg-stt-purple-soft text-stt-purple',
-  assigned: 'rounded-full bg-stt-blue-soft text-stt-blue',
-  in_progress: 'rounded-full bg-stt-amber-soft text-stt-amber',
-  completed: 'rounded-full bg-stt-green-soft text-stt-green-dark',
-  cancelled: 'rounded-full bg-[#EDF1F6] text-stt-muted',
+  open: 'bg-stt-purple-soft text-stt-purple',
+  assigned: 'bg-stt-blue-soft text-stt-blue',
+  in_progress: 'bg-stt-amber-soft text-stt-amber',
+  completed: 'bg-stt-green-soft text-stt-green-dark',
+  cancelled: 'bg-[#EDF1F6] text-stt-muted',
 };
 
 export default async function AuditorHubPage() {
@@ -54,9 +48,10 @@ export default async function AuditorHubPage() {
   ]);
 
   const nameById = new Map((orgs ?? []).map((o) => [o.id, o.name]));
-  const reportByRequest = new Map((reports ?? []).map((r) => [r.request_id, r]));
-  const statusData = countBy(hub.requests, (r) => r.status ?? '—');
-  const typeData = countBy(hub.requests, (r) => r.verification_type ?? '—');
+  const openJobs = hub.requests.filter((r) => r.status === 'open');
+  const mineJobs = hub.requests.filter((r) =>
+    hub.myAssignments.some((a) => a.request_id === r.id)
+  );
 
   const hasOpen = hub.kpis.open > 0;
   const hasActive = hub.kpis.active > 0;
@@ -66,11 +61,7 @@ export default async function AuditorHubPage() {
   return (
     <PageWrapper
       title="Auditor Hub"
-      description={
-        isAuditor
-          ? `${ctx.orgName} · marketplace · assignments · reports`
-          : `${ctx.orgName} · verification jobs involving your organization`
-      }
+      description="Job board · reports · assignments — trust desk, not a donut dashboard"
       actions={
         <div className="flex items-center gap-2">
           {ctx.orgType === 'platform_admin' ? (
@@ -78,8 +69,8 @@ export default async function AuditorHubPage() {
               Super Admin
             </Badge>
           ) : null}
-          <Button asChild variant="outline" className="h-8 rounded-[9px] text-xs">
-            <Link href="/verification">Marketplace</Link>
+          <Button asChild className="h-8 rounded-[9px] bg-stt-purple text-xs hover:bg-[#6B3FB8]">
+            <Link href="/verification">Open marketplace</Link>
           </Button>
           <form action={logoutAction}>
             <Button
@@ -93,6 +84,23 @@ export default async function AuditorHubPage() {
         </div>
       }
     >
+      <HubBanner
+        tone="auditor"
+        title="Auditor desk"
+        subtitle="Claim open jobs, finish assignments, publish attested reports. This is not Brand or Supplier — it is the trust queue."
+        links={[
+          { href: '/verification?tab=open', label: 'Open jobs' },
+          { href: '/verification?tab=mine', label: 'Mine' },
+          { href: '/risk', label: 'Risk signals' },
+        ]}
+        stats={[
+          { label: 'Open', value: hub.kpis.open },
+          { label: 'Active', value: hub.kpis.active },
+          { label: 'Done', value: hub.kpis.completed },
+          { label: 'Reports', value: (reports ?? []).length },
+        ]}
+      />
+
       <JourneyStrip
         steps={[
           { label: 'Request', done: hub.kpis.total > 0 },
@@ -115,213 +123,128 @@ export default async function AuditorHubPage() {
         ]}
       />
 
-      <StatBoxes
-        items={[
-          { label: 'Total jobs', value: hub.kpis.total },
-          { label: 'Open', value: hub.kpis.open, hint: 'Claimable' },
-          { label: 'Active', value: hub.kpis.active },
-          { label: 'Completed', value: hub.kpis.completed },
-        ]}
-      />
-
-      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
-        <DonutChart title="By status" data={statusData} />
-        <DonutChart title="By verification type" data={typeData} />
-      </div>
-
-      <div className="mb-3.5 rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
-        <div className="flex items-center border-b border-stt-line px-4 py-3">
-          <h3 className="text-[13.5px] font-bold">Digital report gallery</h3>
-          <Badge className="ml-auto rounded-full bg-stt-green-soft text-stt-green-dark">
-            {(reports ?? []).length}
-          </Badge>
-        </div>
-        {(reports ?? []).length === 0 ? (
-          <p className="px-4 py-6 text-center text-[12px] text-stt-muted">
-            No reports yet. Complete an assignment in{' '}
-            <Link href="/verification" className="font-semibold text-stt-blue hover:underline">
-              Verification
-            </Link>
-            .
-          </p>
-        ) : (
-          <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-            {(reports ?? []).map((r) => (
-              <Link
-                key={r.id}
-                href="/verification?tab=completed"
-                className="rounded-xl border border-stt-line bg-[#F8FAFC] p-3 transition hover:border-stt-green/50 hover:shadow-[var(--stt-shadow)]"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="text-[12.5px] font-bold leading-snug text-stt-ink">
-                    {r.report_title}
-                  </div>
-                  {r.is_published ? (
-                    <Badge className="shrink-0 rounded-full bg-stt-green-soft text-[9px] text-stt-green-dark">
-                      Published
-                    </Badge>
-                  ) : (
-                    <Badge className="shrink-0 rounded-full bg-stt-amber-soft text-[9px] text-stt-amber">
-                      Draft
-                    </Badge>
-                  )}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <Badge className="rounded-full bg-stt-blue-soft text-[10px] text-stt-blue">
-                    {r.overall_rating ?? '—'}
-                  </Badge>
-                  {r.score != null ? (
-                    <Badge className="font-mono-stt rounded-full bg-[#EDF1F6] text-[10px] text-stt-navy">
-                      Score {r.score}
-                    </Badge>
-                  ) : null}
-                </div>
-                <div className="mt-2 font-mono-stt text-[10px] text-stt-faint">
-                  {r.published_at
-                    ? new Date(r.published_at).toLocaleDateString()
-                    : new Date(r.created_at).toLocaleDateString()}
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-3.5 lg:grid-cols-[1.45fr_1fr]">
-        <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
-          <div className="flex items-center border-b border-stt-line px-4 py-3">
-            <h3 className="text-[13.5px] font-bold">
-              {isAuditor ? 'Marketplace & jobs' : 'Your verification requests'}
-            </h3>
+      {/* Job board columns — unique layout */}
+      <div className="mb-3.5 grid gap-3 lg:grid-cols-3">
+        <div className="rounded-2xl border border-stt-purple/25 bg-[#FAF7FD] shadow-[var(--stt-shadow)]">
+          <div className="flex items-center gap-2 border-b border-stt-purple/15 px-4 py-3">
+            <Inbox className="size-4 text-stt-purple" />
+            <h3 className="text-[13px] font-bold">Open queue</h3>
             <Badge className="ml-auto rounded-full bg-stt-purple-soft text-stt-purple">
-              {hub.requests.length}
+              {openJobs.length}
             </Badge>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-[10px] uppercase text-stt-faint">VR</TableHead>
-                <TableHead className="text-[10px] uppercase text-stt-faint">Parties</TableHead>
-                <TableHead className="text-[10px] uppercase text-stt-faint">Type</TableHead>
-                <TableHead className="text-[10px] uppercase text-stt-faint">Status</TableHead>
-                <TableHead className="text-[10px] uppercase text-stt-faint">Report</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {hub.requests.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-[12px] text-stt-muted">
-                    No verification requests visible.
-                    {brandLike ? (
-                      <>
-                        {' '}
-                        Create one from{' '}
-                        <Link
-                          href="/verification"
-                          className="font-semibold text-stt-blue hover:underline"
-                        >
-                          Verification
-                        </Link>
-                        .
-                      </>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                hub.requests.map((j) => {
-                  const report = reportByRequest.get(j.id);
-                  return (
-                    <TableRow key={j.id} className="hover:bg-[#F7FAFC]">
-                      <TableCell>
-                        <Link
-                          href="/verification"
-                          className="font-mono-stt text-[11px] text-stt-blue hover:underline"
-                        >
-                          {j.request_number}
-                        </Link>
-                        <div className="font-mono-stt text-[10px] text-stt-faint">
-                          {j.deadline_date ?? 'No deadline'}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-[11px]">
-                        <div>{nameById.get(j.buyer_org_id) ?? 'Buyer'}</div>
-                        <div className="text-stt-muted">
-                          → {nameById.get(j.supplier_org_id) ?? 'Supplier'}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-[12px] capitalize">
-                        {j.verification_type?.replace(/_/g, ' ')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={statusClass[j.status] ?? statusClass.open}>
-                          {j.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-[11px] text-stt-muted">
-                        {report ? (
-                          <span>
-                            {report.overall_rating}
-                            {report.score != null ? ` · ${report.score}` : ''}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-          <div className="border-t border-stt-line px-4 py-3">
-            <Button
-              asChild
-              className="h-8 rounded-[9px] bg-stt-green text-xs hover:bg-stt-green-dark"
-            >
-              <Link href="/verification">Open Marketplace →</Link>
-            </Button>
-          </div>
+          <ul className="max-h-[340px] space-y-2 overflow-y-auto p-3">
+            {openJobs.length === 0 ? (
+              <li className="py-6 text-center text-[12px] text-stt-muted">Queue clear.</li>
+            ) : (
+              openJobs.slice(0, 8).map((j) => (
+                <li
+                  key={j.id}
+                  className="rounded-xl border border-white bg-white px-3 py-2.5 shadow-sm"
+                >
+                  <div className="font-mono-stt text-[11px] font-semibold text-stt-purple">
+                    {j.request_number}
+                  </div>
+                  <div className="mt-0.5 text-[11px] capitalize text-stt-muted">
+                    {j.verification_type?.replace(/_/g, ' ')}
+                  </div>
+                  <div className="mt-1 text-[10px] text-stt-faint">
+                    {nameById.get(j.buyer_org_id) ?? 'Buyer'} →{' '}
+                    {nameById.get(j.supplier_org_id) ?? 'Supplier'}
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
         </div>
 
-        <div className="space-y-3.5">
-          {hub.myAssignments.length > 0 ? (
-            <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
-              <div className="border-b border-stt-line px-4 py-3">
-                <h3 className="text-[13.5px] font-bold">Your assignments</h3>
-              </div>
-              <ul className="divide-y divide-stt-line">
-                {hub.myAssignments.map((a) => (
+        <div className="rounded-2xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+          <div className="flex items-center gap-2 border-b border-stt-line px-4 py-3">
+            <ClipboardCheck className="size-4 text-stt-blue" />
+            <h3 className="text-[13px] font-bold">My assignments</h3>
+            <Badge className="ml-auto rounded-full bg-stt-blue-soft text-stt-blue">
+              {mineJobs.length || hub.myAssignments.length}
+            </Badge>
+          </div>
+          <ul className="max-h-[340px] space-y-2 overflow-y-auto p-3">
+            {hub.myAssignments.length === 0 ? (
+              <li className="py-6 text-center text-[12px] text-stt-muted">
+                {isAuditor
+                  ? 'Claim an open job in Marketplace.'
+                  : brandLike
+                    ? 'Auditors claim jobs; you create them from Verification.'
+                    : 'No assignments.'}
+              </li>
+            ) : (
+              hub.myAssignments.map((a) => {
+                const req = hub.requests.find((r) => r.id === a.request_id);
+                return (
                   <li
                     key={a.id}
-                    className="flex items-center justify-between gap-2 px-4 py-2.5"
+                    className="rounded-xl border border-stt-line bg-[#F8FAFC] px-3 py-2.5"
                   >
-                    <Link
-                      href="/verification?tab=mine"
-                      className="font-mono-stt text-[11px] text-stt-blue hover:underline"
+                    <div className="font-mono-stt text-[11px] text-stt-blue">
+                      {req?.request_number ?? a.request_id.slice(0, 8)}
+                    </div>
+                    <Badge
+                      className={`mt-1 rounded-full text-[10px] ${
+                        statusClass[a.status] ?? statusClass.assigned
+                      }`}
                     >
-                      {a.request_id.slice(0, 8)}…
-                    </Link>
-                    <Badge className="rounded-full bg-stt-blue-soft text-stt-blue">
                       {a.status}
                     </Badge>
                   </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+                );
+              })
+            )}
+          </ul>
+        </div>
 
-          <div className="rounded-xl border border-[#CCDCF9] bg-stt-blue-soft px-4 py-3 text-[12px] leading-relaxed text-[#1E4FA8]">
-            Claim open jobs and publish reports from{' '}
-            <Link href="/verification" className="font-semibold underline">
-              Verification
-            </Link>
-            . Risk signals derived from these audits appear in{' '}
-            <Link href="/risk" className="font-semibold underline">
-              Risk Hub
-            </Link>
-            .
+        <div className="rounded-2xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+          <div className="flex items-center gap-2 border-b border-stt-line px-4 py-3">
+            <FileText className="size-4 text-stt-green-dark" />
+            <h3 className="text-[13px] font-bold">Report gallery</h3>
+          </div>
+          <div className="max-h-[340px] space-y-2 overflow-y-auto p-3">
+            {(reports ?? []).length === 0 ? (
+              <p className="py-6 text-center text-[12px] text-stt-muted">
+                Publish from Verification after claim.
+              </p>
+            ) : (
+              (reports ?? []).slice(0, 8).map((r) => (
+                <Link
+                  key={r.id}
+                  href="/verification?tab=completed"
+                  className="block rounded-xl border border-stt-line bg-[#F7FBFA] px-3 py-2.5 transition hover:border-stt-green/40"
+                >
+                  <div className="text-[12px] font-bold leading-snug text-stt-ink">
+                    {r.report_title}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <Badge className="rounded-full bg-stt-blue-soft text-[10px] text-stt-blue">
+                      {r.overall_rating ?? '—'}
+                    </Badge>
+                    {r.score != null ? (
+                      <Badge className="font-mono-stt rounded-full bg-[#EDF1F6] text-[10px]">
+                        {r.score}
+                      </Badge>
+                    ) : null}
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-[#D9C8F0] bg-stt-purple-soft/40 px-4 py-3 text-[12px] leading-relaxed text-[#5B3A8C]">
+        <ShieldCheck className="mr-1 inline size-3.5" />
+        Pass / pass-with-conditions reports show as{' '}
+        <b>Audit verified</b> on Brand Hub supplier cards. Complete work in{' '}
+        <Link href="/verification" className="font-semibold underline">
+          Verification marketplace
+        </Link>
+        .
       </div>
     </PageWrapper>
   );
