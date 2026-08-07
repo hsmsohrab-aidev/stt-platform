@@ -30,3 +30,7 @@ coverage/
 # OS / IDE
 Thumbs.db
 .idea/
+
+# Local PDF review renders
+.pdf-review/
+

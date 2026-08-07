@@ -5,14 +5,25 @@ import {
 } from '@/app/(dashboard)/alerts/actions';
 import {
   DonutChart,
+  FilterBar,
   StatBoxes,
+  TrendChart,
   countBy,
+  trendFromDates,
 } from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { requireSessionContext } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
+
+const severityTone: Record<string, string> = {
+  critical: 'bg-stt-red-soft text-stt-red',
+  high: 'bg-[#FDE8E8] text-[#B42318]',
+  medium: 'bg-stt-amber-soft text-stt-amber',
+  low: 'bg-stt-blue-soft text-stt-blue',
+  info: 'bg-[#EDF1F6] text-stt-muted',
+};
 
 export default async function AlertsPage() {
   const ctx = await requireSessionContext();
@@ -29,12 +40,25 @@ export default async function AlertsPage() {
 
   const rows = notifications ?? [];
   const unread = rows.filter((n) => !n.is_read).length;
+  const critical = rows.filter((n) => n.severity === 'critical').length;
+  const high = rows.filter((n) => n.severity === 'high').length;
+  const medium = rows.filter((n) => n.severity === 'medium').length;
+  const low = rows.filter(
+    (n) => n.severity === 'low' || n.severity === 'info' || !n.severity
+  ).length;
+
   const severityData = countBy(rows, (n) => n.severity ?? 'info');
+  const moduleData = countBy(rows, (n) => n.module ?? 'general');
+  const statusData = countBy(rows, (n) => (n.is_read ? 'read' : 'open'));
+  const trend = trendFromDates(
+    rows.map((n) => n.created_at),
+    6
+  );
 
   return (
     <PageWrapper
-      title="Alerts"
-      description="In-app notifications · TC & ops signals"
+      title="Alerting & Notifications"
+      description="Right alert · right person · right time"
       actions={
         unread > 0 ? (
           <form action={markAllNotificationsReadAction}>
@@ -49,22 +73,33 @@ export default async function AlertsPage() {
         ) : null
       }
     >
-      <StatBoxes
+      <FilterBar
         items={[
-          { label: 'Unread', value: unread },
-          { label: 'Total', value: rows.length },
-          { label: 'Read', value: rows.length - unread },
-          { label: 'Severities', value: severityData.length },
+          { label: 'Channel', value: 'In-app' },
+          { label: 'Window', value: 'Recent 60' },
+          { label: 'Org', value: ctx.orgName.slice(0, 24) },
         ]}
       />
 
-      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+      <StatBoxes
+        items={[
+          { label: 'Total alerts', value: rows.length },
+          { label: 'Critical', value: critical },
+          { label: 'High', value: high },
+          { label: 'Medium / low', value: medium + low, hint: `${unread} unread` },
+        ]}
+      />
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2 xl:grid-cols-4">
         <DonutChart title="By severity" data={severityData} />
+        <DonutChart title="By category / module" data={moduleData} />
+        <DonutChart title="By status" data={statusData} />
+        <TrendChart title="Alerts over time" data={trend} color="#2D6CDF" />
       </div>
 
       <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
         <div className="flex items-center border-b border-stt-line px-4 py-3">
-          <h3 className="text-[12.5px] font-bold">Inbox</h3>
+          <h3 className="text-[13.5px] font-bold">Recent alerts</h3>
           <Badge className="ml-auto rounded-full bg-stt-blue-soft text-stt-blue">
             {unread} unread
           </Badge>
@@ -72,7 +107,7 @@ export default async function AlertsPage() {
 
         {rows.length === 0 ? (
           <p className="px-4 py-8 text-center text-[12px] text-stt-muted">
-            No alerts yet. When a partner issues a TC to you, it appears here.
+            No alerts yet. TC issues, risk signals and membership events appear here.
           </p>
         ) : (
           <ul className="divide-y divide-stt-line">
@@ -95,11 +130,22 @@ export default async function AlertsPage() {
                     ) : (
                       <p className="text-[12.5px] font-semibold text-stt-ink">{n.title}</p>
                     )}
+                    <Badge
+                      className={`rounded-full capitalize ${
+                        severityTone[n.severity ?? 'info'] ?? severityTone.info
+                      }`}
+                    >
+                      {n.severity ?? 'info'}
+                    </Badge>
                     {!n.is_read ? (
                       <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">
-                        New
+                        Open
                       </Badge>
-                    ) : null}
+                    ) : (
+                      <Badge className="rounded-full bg-[#EDF1F6] text-stt-muted">
+                        Read
+                      </Badge>
+                    )}
                     {n.module ? (
                       <span className="font-mono-stt text-[10px] text-stt-faint">
                         {n.module}
@@ -130,7 +176,7 @@ export default async function AlertsPage() {
                         variant="outline"
                         className="h-7 rounded-[9px] text-[11px]"
                       >
-                        Read
+                        Ack
                       </Button>
                     </form>
                   ) : null}

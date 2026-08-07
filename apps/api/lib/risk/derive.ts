@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import type { OrgType } from '@stt/types';
+import { canActAsBrand, canActAsSupplier } from '@/lib/auth/capabilities';
 import { createClient } from '@/lib/supabase/server';
 
 export type RiskSeverity = 'critical' | 'high' | 'medium' | 'low';
@@ -91,37 +92,38 @@ export const loadOrgRiskSnapshot = cache(
     const flags: RiskFlag[] = [];
     const today = new Date().toISOString().slice(0, 10);
 
-    const tcPendingQuery =
-      orgType === 'brand'
-        ? supabase
-            .from('transaction_certificates')
-            .select('id, tc_number, tc_status, expiry_date')
-            .eq('receiver_org_id', organizationId)
-            .in('tc_status', ['issued', 'transferred'])
-            .limit(40)
-        : supabase
-            .from('transaction_certificates')
-            .select('id, tc_number, tc_status, expiry_date')
-            .eq('issuer_org_id', organizationId)
-            .in('tc_status', ['issued', 'transferred'])
-            .limit(40);
+    const brandLike = canActAsBrand(orgType);
+    const supplierLike = canActAsSupplier(orgType);
 
-    const vrQuery =
-      orgType === 'brand'
+    const tcPendingQuery = brandLike
+      ? supabase
+          .from('transaction_certificates')
+          .select('id, tc_number, tc_status, expiry_date')
+          .eq('receiver_org_id', organizationId)
+          .in('tc_status', ['issued', 'transferred'])
+          .limit(40)
+      : supabase
+          .from('transaction_certificates')
+          .select('id, tc_number, tc_status, expiry_date')
+          .eq('issuer_org_id', organizationId)
+          .in('tc_status', ['issued', 'transferred'])
+          .limit(40);
+
+    const vrQuery = brandLike
+      ? supabase
+          .from('verification_requests')
+          .select('id, request_number, status, verification_type')
+          .eq('buyer_org_id', organizationId)
+          .in('status', ['open', 'in_progress'])
+          .limit(30)
+      : supplierLike
         ? supabase
             .from('verification_requests')
             .select('id, request_number, status, verification_type')
-            .eq('buyer_org_id', organizationId)
+            .eq('supplier_org_id', organizationId)
             .in('status', ['open', 'in_progress'])
             .limit(30)
-        : orgType === 'supplier'
-          ? supabase
-              .from('verification_requests')
-              .select('id, request_number, status, verification_type')
-              .eq('supplier_org_id', organizationId)
-              .in('status', ['open', 'in_progress'])
-              .limit(30)
-          : Promise.resolve({ data: [] as never[] });
+        : Promise.resolve({ data: [] as never[] });
 
     const [
       pendingTcs,
@@ -136,7 +138,7 @@ export const loadOrgRiskSnapshot = cache(
         .select('id, name, is_verified')
         .eq('organization_id', organizationId)
         .limit(50),
-      orgType === 'supplier' || orgType === 'brand'
+      brandLike || supplierLike
         ? supabase
             .from('material_wallets')
             .select('id')
@@ -187,8 +189,7 @@ export const loadOrgRiskSnapshot = cache(
           kind: 'unverified_tc',
           severity: 'high',
           title: `Unverified TC · ${tc.tc_number}`,
-          description:
-            orgType === 'brand'
+          description: brandLike
               ? 'Inbound certificate awaiting receiver verify'
               : 'Issued certificate still pending receiver verify',
           href: `/tc/${tc.id}`,
@@ -250,7 +251,7 @@ export const loadOrgRiskSnapshot = cache(
       }
     }
 
-    if (orgType === 'supplier') {
+    if (supplierLike) {
       for (const b of balancesResult.data ?? []) {
         const qty = Number(b.available_qty ?? 0);
         if (qty >= 100) continue;
