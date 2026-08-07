@@ -33,6 +33,7 @@ const assure: NavItem[] = [
 ];
 
 const decide: NavItem[] = [
+  { href: '/demo-data', label: 'Demo Data' },
   { href: '/reports', label: 'Reports' },
   { href: '/alerts', label: 'Alerts' },
   { href: '/membership', label: 'Membership' },
