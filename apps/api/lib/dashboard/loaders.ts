@@ -242,7 +242,10 @@ export async function loadVerificationHubData(ctx: SessionContext) {
     .limit(50);
 
   if (ctx.orgType === 'auditor' || ctx.orgType === 'platform_admin') {
-    // Marketplace + assigned — RLS already scopes; keep open/active visible
+    // Super Admin / auditor: marketplace + own buyer/supplier jobs
+    requestQuery = requestQuery.or(
+      `buyer_org_id.eq.${orgId},supplier_org_id.eq.${orgId},status.in.(open,assigned,in_progress,completed)`
+    );
   } else {
     requestQuery = requestQuery.or(
       `buyer_org_id.eq.${orgId},supplier_org_id.eq.${orgId}`

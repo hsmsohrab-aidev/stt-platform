@@ -150,7 +150,7 @@ export default async function CompliancePage() {
             <div className="border-b border-stt-line px-4 py-3">
               <h3 className="text-[12.5px] font-bold">Standards readiness</h3>
               <p className="mt-0.5 text-[11px] text-stt-muted">
-                Label map for pilots — full regulation library later
+                Label map for current standards — full regulation library later
               </p>
             </div>
             <ul className="divide-y divide-stt-line">

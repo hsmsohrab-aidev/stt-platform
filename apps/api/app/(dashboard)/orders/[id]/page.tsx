@@ -243,7 +243,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
           </div>
           {(lines ?? []).length === 0 ? (
             <p className="px-4 py-6 text-[12px] text-stt-muted">
-              No line items stored for this demo order.
+              No line items on this order yet.
             </p>
           ) : (
             <ul className="divide-y divide-stt-line">

@@ -133,7 +133,7 @@ export default async function VerificationPage() {
                   <TableRow>
                     <TableCell colSpan={4} className="text-[12px] text-stt-muted">
                       No verification requests yet. Brands create them from the panel on
-                      the right, or load Demo Data.
+                      the right.
                     </TableCell>
                   </TableRow>
                 ) : (

@@ -71,7 +71,7 @@ export default async function ReportsPage() {
   return (
     <PageWrapper
       title="Reports"
-      description="Pilot pack · print / save as PDF"
+      description="Operations summary · print / save as PDF"
       actions={
         <div className="flex items-center gap-2 print:hidden">
           <PrintTcButton />

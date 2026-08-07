@@ -54,8 +54,7 @@ export function DemoDataForms({
         <p className="mt-1 text-[12px] leading-relaxed text-stt-muted">
           Creates partner suppliers (Chattogram Apparel, Pacific Knitwear, Delta
           Spinning), SGC Global Assurance, facilities, wallets, POs, shipments,
-          TCs, DPPs, verification jobs, and alerts — realistic trade names, not
-          “Demo 1 / Demo 2”.
+          TCs, DPPs, verification jobs, and alerts — with realistic trade names.
         </p>
         {hasBatch ? (
           <p className="mt-3 rounded-[9px] border border-stt-amber/30 bg-stt-amber-soft px-3 py-2 text-[11.5px] text-stt-ink">

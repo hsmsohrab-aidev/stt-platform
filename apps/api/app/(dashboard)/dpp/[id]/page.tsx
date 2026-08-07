@@ -203,8 +203,7 @@ export default async function DppDetailPage({ params }: PageProps) {
             <ul className="divide-y divide-stt-line">
               {(linkedMaterials ?? []).length === 0 ? (
                 <li className="px-4 py-6 text-center text-[12px] text-stt-muted">
-                  No material–TC links yet. Add one on the right.
-                </li>
+                  No material–TC links yet. Add one on the right.                </li>
               ) : (
                 (linkedMaterials ?? []).map((row) => {
                   const mat = row.materials as

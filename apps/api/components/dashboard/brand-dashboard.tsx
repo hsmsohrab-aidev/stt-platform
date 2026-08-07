@@ -105,9 +105,14 @@ export function BrandDashboard({
                 </TableRow>
               ) : (
                 suppliers.map((s) => (
-                  <TableRow key={s.id}>
+                  <TableRow key={s.id} className="hover:bg-[#F7FAFC]">
                     <TableCell className="text-[12px] font-semibold">
-                      {orgNameFrom(s.organizations)}
+                      <Link
+                        href="/supplier"
+                        className="text-stt-blue hover:underline"
+                      >
+                        {orgNameFrom(s.organizations)}
+                      </Link>
                     </TableCell>
                     <TableCell className="font-mono-stt text-[11px]">
                       {s.tier_level}
@@ -152,9 +157,11 @@ export function BrandDashboard({
                 </TableRow>
               ) : (
                 recentTcs.map((tc) => (
-                  <TableRow key={tc.id}>
+                  <TableRow key={tc.id} className="hover:bg-[#F7FAFC]">
                     <TableCell className="font-mono-stt text-[11px] text-stt-blue">
-                      {tc.tc_number}
+                      <Link href={`/tc/${tc.id}`} className="hover:underline">
+                        {tc.tc_number}
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <Badge className="rounded-full bg-stt-blue-soft text-stt-blue">

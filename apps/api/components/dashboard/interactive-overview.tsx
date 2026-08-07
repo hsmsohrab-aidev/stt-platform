@@ -22,6 +22,7 @@ export type MapPinData = {
   country: string;
   kind: 'facility' | 'port' | 'brand' | 'partner';
   status?: string;
+  href?: string;
   /** 0–100 position on stylized map */
   x: number;
   y: number;
@@ -77,7 +78,6 @@ export function InteractiveOverview({
 
   return (
     <div className="grid gap-3.5 xl:grid-cols-[1.45fr_1fr]">
-      {/* Map */}
       <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
         <div className="flex items-center border-b border-stt-line px-4 py-3">
           <h3 className="text-[13.5px] font-bold text-stt-ink">Supply chain map</h3>
@@ -85,28 +85,69 @@ export function InteractiveOverview({
             {pins.length} nodes
           </Badge>
         </div>
-        <div className="relative overflow-hidden bg-[linear-gradient(180deg,#EAF3FB_0%,#F7FAFD_55%,#EEF6F1_100%)] px-3 pb-3 pt-3">
+        <div className="relative overflow-hidden bg-[linear-gradient(180deg,#DCEAF6_0%,#F4F8FC_48%,#E8F4EE_100%)] px-3 pb-3 pt-3">
           <svg
-            viewBox="0 0 640 280"
-            className="h-[240px] w-full"
+            viewBox="0 0 640 300"
+            className="h-[260px] w-full"
             role="img"
-            aria-label="Interactive supply chain map"
+            aria-label="Interactive supply chain map South Asia to Europe"
           >
-            {/* soft continents (stylized) */}
-            <ellipse cx="160" cy="130" rx="90" ry="55" fill="#D7E6F4" opacity="0.9" />
-            <ellipse cx="310" cy="150" rx="70" ry="48" fill="#D7E6F4" opacity="0.85" />
-            <ellipse cx="470" cy="110" rx="100" ry="60" fill="#D7E6F4" opacity="0.9" />
-            <ellipse cx="520" cy="190" rx="55" ry="35" fill="#D7E6F4" opacity="0.7" />
+            {/* Ocean grid */}
+            <defs>
+              <pattern id="oceanGrid" width="24" height="24" patternUnits="userSpaceOnUse">
+                <path
+                  d="M 24 0 L 0 0 0 24"
+                  fill="none"
+                  stroke="#C9DCEC"
+                  strokeWidth="0.6"
+                  opacity="0.55"
+                />
+              </pattern>
+            </defs>
+            <rect width="640" height="300" fill="url(#oceanGrid)" opacity="0.45" />
 
-            {/* route path */}
+            {/* Europe mass */}
+            <path
+              d="M120 55 C145 40 175 38 205 48 C235 58 250 78 242 105 C232 135 200 148 168 142 C138 136 112 118 108 92 C105 72 108 62 120 55Z"
+              fill="#B9D4EA"
+              stroke="#8FB4D4"
+              strokeWidth="1"
+            />
+            {/* Middle East / South Asia arc */}
+            <path
+              d="M300 95 C330 80 365 88 390 110 C415 132 430 165 418 190 C400 220 360 228 330 210 C300 192 285 155 292 125 C295 110 297 100 300 95Z"
+              fill="#B9D4EA"
+              stroke="#8FB4D4"
+              strokeWidth="1"
+              opacity="0.85"
+            />
+            {/* Bangladesh / Bay of Bengal focus */}
+            <path
+              d="M430 155 C448 148 468 152 480 168 C492 186 488 208 470 218 C450 228 428 220 420 200 C414 182 418 162 430 155Z"
+              fill="#A8C9A8"
+              stroke="#7AA87A"
+              strokeWidth="1.2"
+            />
+            {/* Labels */}
+            <text x="155" y="95" fill="#5D7189" fontSize="11" fontWeight="600">
+              Europe
+            </text>
+            <text x="438" y="190" fill="#3D5A40" fontSize="11" fontWeight="700">
+              BD
+            </text>
+            <text x="500" y="240" fill="#5D7189" fontSize="10">
+              Bay of Bengal
+            </text>
+
+            {/* Trade route */}
             {pins.length >= 2 ? (
               <path
                 d={buildRoutePath(pins)}
                 fill="none"
                 stroke="#12A45B"
-                strokeWidth="2.5"
-                strokeDasharray="6 5"
-                opacity="0.85"
+                strokeWidth="2.75"
+                strokeDasharray="7 5"
+                opacity="0.9"
               />
             ) : null}
 
@@ -116,7 +157,7 @@ export function InteractiveOverview({
               return (
                 <g
                   key={pin.id}
-                  transform={`translate(${(pin.x / 100) * 640}, ${(pin.y / 100) * 280})`}
+                  transform={`translate(${(pin.x / 100) * 640}, ${(pin.y / 100) * 300})`}
                   className="cursor-pointer"
                   onClick={() => setActiveId(pin.id)}
                   onKeyDown={(e) => {
@@ -126,11 +167,21 @@ export function InteractiveOverview({
                   role="button"
                   aria-label={pin.label}
                 >
+                  {selected ? (
+                    <circle r="20" fill="#12A45B" opacity="0.18">
+                      <animate
+                        attributeName="r"
+                        values="16;22;16"
+                        dur="1.8s"
+                        repeatCount="indefinite"
+                      />
+                    </circle>
+                  ) : null}
                   <circle
-                    r={selected ? 16 : 12}
+                    r={selected ? 15 : 11}
                     fill={selected ? '#12A45B' : '#FFFFFF'}
                     stroke={selected ? '#0B7A42' : '#12A45B'}
-                    strokeWidth="2"
+                    strokeWidth="2.25"
                   />
                   <foreignObject x={-7} y={-7} width="14" height="14">
                     <div className="grid size-full place-items-center">
@@ -149,7 +200,7 @@ export function InteractiveOverview({
           </svg>
 
           {active ? (
-            <div className="absolute bottom-4 left-4 right-4 rounded-[10px] border border-stt-line bg-white/95 p-3 shadow-[var(--stt-shadow)] backdrop-blur sm:right-auto sm:w-[280px]">
+            <div className="absolute bottom-4 left-4 right-4 rounded-[10px] border border-stt-line bg-white/95 p-3 shadow-[var(--stt-shadow)] backdrop-blur sm:right-auto sm:w-[300px]">
               <div className="flex items-start gap-2">
                 <MapPin className="mt-0.5 size-4 text-stt-green" strokeWidth={1.75} />
                 <div className="min-w-0 flex-1">
@@ -168,10 +219,10 @@ export function InteractiveOverview({
                 </div>
               </div>
               <Link
-                href="/supply-chain"
+                href={active.href ?? '/supply-chain'}
                 className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-stt-blue hover:underline"
               >
-                View details <ArrowRight className="size-3.5" />
+                Open details <ArrowRight className="size-3.5" />
               </Link>
             </div>
           ) : null}
@@ -194,7 +245,6 @@ export function InteractiveOverview({
         </div>
       </div>
 
-      {/* Right column */}
       <div className="flex flex-col gap-3.5">
         <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
           <div className="border-b border-stt-line px-4 py-3">
@@ -204,7 +254,7 @@ export function InteractiveOverview({
             {activity.length === 0 ? (
               <li className="px-4 py-6 text-[12.5px] text-stt-muted">No recent events.</li>
             ) : (
-              activity.slice(0, 5).map((a) => (
+              activity.slice(0, 6).map((a) => (
                 <li key={a.id} className="px-4 py-2.5">
                   {a.href ? (
                     <Link href={a.href} className="block hover:opacity-90">
@@ -252,7 +302,6 @@ export function InteractiveOverview({
         ) : null}
       </div>
 
-      {/* Journey full width */}
       <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)] xl:col-span-2">
         <div className="flex items-center border-b border-stt-line px-4 py-3">
           <h3 className="text-[13.5px] font-bold">Product traceability journey</h3>
@@ -321,14 +370,15 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 }
 
 function buildRoutePath(pins: MapPinData[]): string {
-  const pts = pins.map((p) => [(p.x / 100) * 640, (p.y / 100) * 280] as const);
+  const ordered = [...pins].sort((a, b) => a.x - b.x);
+  const pts = ordered.map((p) => [(p.x / 100) * 640, (p.y / 100) * 300] as const);
   if (pts.length < 2) return '';
   let d = `M ${pts[0][0]} ${pts[0][1]}`;
   for (let i = 1; i < pts.length; i += 1) {
     const [x0, y0] = pts[i - 1];
     const [x1, y1] = pts[i];
     const cx = (x0 + x1) / 2;
-    const cy = Math.min(y0, y1) - 28;
+    const cy = Math.min(y0, y1) - 24;
     d += ` Q ${cx} ${cy} ${x1} ${y1}`;
   }
   return d;

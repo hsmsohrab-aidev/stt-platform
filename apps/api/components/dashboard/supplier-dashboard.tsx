@@ -124,8 +124,15 @@ export function SupplierDashboard({
                 </TableRow>
               ) : (
                 facilities.map((f) => (
-                  <TableRow key={f.id}>
-                    <TableCell className="text-[12px] font-semibold">{f.name}</TableCell>
+                  <TableRow key={f.id} className="hover:bg-[#F7FAFC]">
+                    <TableCell className="text-[12px] font-semibold">
+                      <Link
+                        href={`/facilities/${f.id}`}
+                        className="text-stt-blue hover:underline"
+                      >
+                        {f.name}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-[12px]">{f.facility_type}</TableCell>
                     <TableCell>
                       <Badge
@@ -166,9 +173,11 @@ export function SupplierDashboard({
                 </TableRow>
               ) : (
                 recentTcs.map((tc) => (
-                  <TableRow key={tc.id}>
+                  <TableRow key={tc.id} className="hover:bg-[#F7FAFC]">
                     <TableCell className="font-mono-stt text-[11px] text-stt-blue">
-                      {tc.tc_number}
+                      <Link href={`/tc/${tc.id}`} className="hover:underline">
+                        {tc.tc_number}
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">

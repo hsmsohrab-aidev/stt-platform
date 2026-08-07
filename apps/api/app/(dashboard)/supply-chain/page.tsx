@@ -1,4 +1,10 @@
 import Link from 'next/link';
+import {
+  DonutChart,
+  StatBoxes,
+  countBy,
+} from '@/components/charts/stat-charts';
+import { InteractiveOverview } from '@/components/dashboard/interactive-overview';
 import { SupplyChainMap } from '@/components/dashboard/supply-chain-map';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +19,7 @@ import {
 } from '@/components/ui/table';
 import { canActAsBrand } from '@/lib/auth/capabilities';
 import { requireSessionContext } from '@/lib/auth/session';
+import { loadInteractiveOverview } from '@/lib/dashboard/overview';
 import { loadSupplyChainMap } from '@/lib/dashboard/supply-chain';
 import { createClient } from '@/lib/supabase/server';
 
@@ -21,22 +28,26 @@ export default async function SupplyChainPage() {
   const supabase = createClient();
   const brandLike = canActAsBrand(ctx.orgType);
 
-  const [nodes, facilitiesResult] = await Promise.all([
+  const [nodes, facilitiesResult, overview] = await Promise.all([
     loadSupplyChainMap(ctx),
     supabase
       .from('facilities')
       .select('id, name, facility_type, tier_level, city, country, is_verified')
       .eq('organization_id', ctx.organizationId)
       .order('created_at', { ascending: false }),
+    loadInteractiveOverview(ctx),
   ]);
 
-  const ownFacilities = facilitiesResult.data;
+  const ownFacilities = facilitiesResult.data ?? [];
+  const tierData = countBy(nodes, (n) => n.tier);
+  const typeData = countBy(ownFacilities, (f) => f.facility_type ?? '—');
+
   return (
     <PageWrapper
       title="Supply Chain"
       description={
         brandLike
-          ? 'Tier map · linked suppliers → brand'
+          ? 'Interactive map · tier flow · facilities'
           : 'Facility chain · declare units to extend the map'
       }
       actions={
@@ -45,9 +56,33 @@ export default async function SupplyChainPage() {
         </Button>
       }
     >
+      <div className="mb-3.5">
+        <InteractiveOverview {...overview} />
+      </div>
+
+      <StatBoxes
+        items={[
+          { label: 'Chain nodes', value: nodes.length },
+          { label: 'Your facilities', value: ownFacilities.length },
+          {
+            label: 'Verified',
+            value: ownFacilities.filter((f) => f.is_verified).length,
+          },
+          {
+            label: 'With TC signal',
+            value: nodes.filter((n) => n.latestTc).length,
+          },
+        ]}
+      />
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+        <DonutChart title="Nodes by tier" data={tierData} />
+        <DonutChart title="Your facility types" data={typeData} />
+      </div>
+
       <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
         <div className="flex items-center border-b border-stt-line px-4 py-3">
-          <h3 className="text-[12.5px] font-bold">Chain map</h3>
+          <h3 className="text-[12.5px] font-bold">Tier flow</h3>
           <Badge className="ml-auto rounded-full bg-stt-green-soft text-stt-green-dark">
             {nodes.length} nodes
           </Badge>
@@ -68,7 +103,7 @@ export default async function SupplyChainPage() {
         <div className="flex items-center border-b border-stt-line px-4 py-3">
           <h3 className="text-[12.5px] font-bold">Your facilities</h3>
           <Badge className="ml-auto rounded-full bg-[#EDF1F6] text-stt-muted">
-            {ownFacilities?.length ?? 0}
+            {ownFacilities.length}
           </Badge>
         </div>
         <Table>
@@ -81,7 +116,7 @@ export default async function SupplyChainPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(ownFacilities ?? []).length === 0 ? (
+            {ownFacilities.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-[12px] text-stt-muted">
                   No facilities yet —{' '}
@@ -92,7 +127,7 @@ export default async function SupplyChainPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              (ownFacilities ?? []).map((f) => (
+              ownFacilities.map((f) => (
                 <TableRow key={f.id} className="hover:bg-[#F7FAFC]">
                   <TableCell>
                     <Link
