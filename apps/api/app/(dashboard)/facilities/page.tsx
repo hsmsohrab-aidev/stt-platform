@@ -1,4 +1,11 @@
+import Link from 'next/link';
 import { FacilityForm } from '@/app/(dashboard)/facilities/facility-form';
+import {
+  BarChart,
+  DonutChart,
+  StatBoxes,
+  countBy,
+} from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,17 +31,39 @@ export default async function FacilitiesPage() {
     .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false });
 
+  const rows = facilities ?? [];
+  const typeData = countBy(rows, (f) => f.facility_type ?? '—').slice(0, 8);
+  const tierData = countBy(rows, (f) =>
+    f.tier_level != null ? `Tier ${f.tier_level}` : '—'
+  );
+  const verified = rows.filter((f) => f.is_verified).length;
+  const active = rows.filter((f) => f.is_active).length;
+
   return (
     <PageWrapper
       title="Supply Chain Declaration"
       description="Declare facilities · tier 1→6 transparency"
     >
+      <StatBoxes
+        items={[
+          { label: 'Total', value: rows.length },
+          { label: 'Verified', value: verified },
+          { label: 'Active', value: active },
+          { label: 'Facility types', value: typeData.length },
+        ]}
+      />
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+        <BarChart title="By facility type" data={typeData} />
+        <DonutChart title="By tier" data={tierData} />
+      </div>
+
       <div className="grid gap-3.5 lg:grid-cols-[1.2fr_1fr]">
         <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
           <div className="flex items-center border-b border-stt-line px-4 py-3">
             <h3 className="text-[12.5px] font-bold">Declared facilities</h3>
             <Badge className="ml-auto rounded-full bg-stt-green-soft text-stt-green-dark hover:bg-stt-green-soft">
-              {facilities?.length ?? 0} total
+              {rows.length} total
             </Badge>
           </div>
           <Table>
@@ -58,16 +87,23 @@ export default async function FacilitiesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(facilities ?? []).length === 0 ? (
+              {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-[12px] text-stt-muted">
                     No facilities yet — declare your first unit.
                   </TableCell>
                 </TableRow>
               ) : (
-                (facilities ?? []).map((f) => (
-                  <TableRow key={f.id}>
-                    <TableCell className="text-[12px] font-semibold">{f.name}</TableCell>
+                rows.map((f) => (
+                  <TableRow key={f.id} className="hover:bg-[#F7FAFC]">
+                    <TableCell>
+                      <Link
+                        href={`/facilities/${f.id}`}
+                        className="text-[12px] font-semibold text-stt-blue hover:underline"
+                      >
+                        {f.name}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-[12px]">{f.facility_type}</TableCell>
                     <TableCell className="font-mono-stt text-[11px]">
                       {f.tier_level ?? '—'}

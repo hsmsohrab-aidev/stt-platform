@@ -1,5 +1,10 @@
 import Link from 'next/link';
 import { CreateShipmentForm } from '@/app/(dashboard)/shipments/create-form';
+import {
+  DonutChart,
+  StatBoxes,
+  countBy,
+} from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -10,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { canActAsBrand } from '@/lib/auth/capabilities';
 import { requireSessionContext } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
@@ -25,6 +31,7 @@ export default async function ShipmentsPage() {
   const ctx = await requireSessionContext();
   const supabase = createClient();
   const orgId = ctx.organizationId;
+  const brandLike = canActAsBrand(ctx.orgType);
 
   const [{ data: shipments }, { data: orders }, { data: rels }] = await Promise.all([
     supabase
@@ -36,7 +43,7 @@ export default async function ShipmentsPage() {
         `organization_id.eq.${orgId},shipper_org_id.eq.${orgId},consignee_org_id.eq.${orgId}`
       )
       .order('created_at', { ascending: false })
-      .limit(40),
+      .limit(50),
     supabase
       .from('orders')
       .select('id, order_number')
@@ -44,8 +51,8 @@ export default async function ShipmentsPage() {
         `organization_id.eq.${orgId},buyer_org_id.eq.${orgId},supplier_org_id.eq.${orgId}`
       )
       .order('created_at', { ascending: false })
-      .limit(40),
-    ctx.orgType === 'brand'
+      .limit(50),
+    brandLike
       ? supabase
           .from('supplier_relationships')
           .select('supplier_org_id')
@@ -58,10 +65,10 @@ export default async function ShipmentsPage() {
           .eq('status', 'active'),
   ]);
 
-  const counterpartyIds =
-    ctx.orgType === 'brand'
-      ? (rels ?? []).map((r) => (r as { supplier_org_id: string }).supplier_org_id)
-      : (rels ?? []).map((r) => (r as { brand_org_id: string }).brand_org_id);
+  const rows = shipments ?? [];
+  const counterpartyIds = brandLike
+    ? (rels ?? []).map((r) => (r as { supplier_org_id: string }).supplier_org_id)
+    : (rels ?? []).map((r) => (r as { brand_org_id: string }).brand_org_id);
 
   const { data: counterpartyOrgs } =
     counterpartyIds.length > 0
@@ -72,17 +79,35 @@ export default async function ShipmentsPage() {
           .order('name')
       : { data: [] };
 
+  const statusData = countBy(rows, (s) => s.status ?? '—');
+  const inTransit = rows.filter((s) => s.status === 'in_transit').length;
+  const delivered = rows.filter((s) => s.status === 'delivered').length;
+  const exceptions = rows.filter((s) => s.status === 'exception').length;
+
   return (
     <PageWrapper
       title="Shipments"
       description="Track cargo · ports · status timeline"
     >
+      <StatBoxes
+        items={[
+          { label: 'Total', value: rows.length },
+          { label: 'In transit', value: inTransit },
+          { label: 'Delivered', value: delivered },
+          { label: 'Exceptions', value: exceptions },
+        ]}
+      />
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+        <DonutChart title="Status breakdown" data={statusData} />
+      </div>
+
       <div className="grid gap-3.5 lg:grid-cols-[1.5fr_1fr]">
         <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
           <div className="flex items-center border-b border-stt-line px-4 py-3">
             <h3 className="text-[12.5px] font-bold">Active / recent</h3>
             <Badge className="ml-auto rounded-full bg-stt-blue-soft text-stt-blue">
-              {shipments?.length ?? 0}
+              {rows.length}
             </Badge>
           </div>
           <Table>
@@ -91,18 +116,19 @@ export default async function ShipmentsPage() {
                 <TableHead className="text-[10px] uppercase text-stt-faint">Shipment</TableHead>
                 <TableHead className="text-[10px] uppercase text-stt-faint">Route</TableHead>
                 <TableHead className="text-[10px] uppercase text-stt-faint">Status</TableHead>
+                <TableHead className="text-[10px] uppercase text-stt-faint">Open</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(shipments ?? []).length === 0 ? (
+              {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-[12px] text-stt-muted">
+                  <TableCell colSpan={4} className="text-[12px] text-stt-muted">
                     No shipments yet.
                   </TableCell>
                 </TableRow>
               ) : (
-                (shipments ?? []).map((s) => (
-                  <TableRow key={s.id}>
+                rows.map((s) => (
+                  <TableRow key={s.id} className="hover:bg-[#F7FAFC]">
                     <TableCell>
                       <Link
                         href={`/shipments/${s.id}`}
@@ -122,6 +148,14 @@ export default async function ShipmentsPage() {
                       <Badge className={statusBadge[s.status] ?? statusBadge.pending}>
                         {s.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/shipments/${s.id}`}
+                        className="text-[11px] font-semibold text-stt-blue hover:underline"
+                      >
+                        Open →
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))

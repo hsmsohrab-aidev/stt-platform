@@ -1,6 +1,7 @@
 import { ClaimRequestButton } from '@/app/(dashboard)/verification/claim-button';
 import { CompleteVerificationForm } from '@/app/(dashboard)/verification/complete-form';
 import { CreateVerificationForm } from '@/app/(dashboard)/verification/create-form';
+import { DonutChart, countBy } from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -71,6 +72,7 @@ export default async function VerificationPage() {
 
   const brandLike = canActAsBrand(ctx.orgType);
   const auditorLike = canActAsAuditor(ctx.orgType);
+  const statusData = countBy(requests, (r) => r.status ?? '—');
 
   return (
     <PageWrapper
@@ -102,6 +104,10 @@ export default async function VerificationPage() {
             <div className="mt-0.5 font-display text-[20px] font-bold">{value}</div>
           </div>
         ))}
+      </div>
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+        <DonutChart title="By status" data={statusData} />
       </div>
 
       <div className="grid gap-3.5 lg:grid-cols-[1.5fr_1fr]">

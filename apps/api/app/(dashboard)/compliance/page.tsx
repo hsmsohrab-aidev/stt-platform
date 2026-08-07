@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { DonutChart, countBy } from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ export default async function CompliancePage() {
   const ctx = await requireSessionContext();
   const snapshot = await loadOrgRiskSnapshot(ctx.organizationId, ctx.orgType);
   const tasks = snapshot.flags.filter((f) => f.category === 'compliance');
+  const severityData = countBy(tasks, (t) => t.severity);
 
   const kpis: Array<[string, string | number, string]> = [
     ['Compliance score', snapshot.complianceScore, '100 = clear'],
@@ -72,6 +74,10 @@ export default async function CompliancePage() {
           ))}
         </div>
 
+        {severityData.length > 0 ? (
+          <DonutChart title="Compliance tasks by severity" data={severityData} />
+        ) : null}
+
         <div className="grid gap-3.5 lg:grid-cols-[1.35fr_1fr]">
           <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
             <div className="flex items-center border-b border-stt-line px-4 py-3">
@@ -106,7 +112,7 @@ export default async function CompliancePage() {
                   </TableRow>
                 ) : (
                   tasks.map((t) => (
-                    <TableRow key={t.id}>
+                    <TableRow key={t.id} className="hover:bg-[#F7FAFC]">
                       <TableCell>
                         <Badge
                           className={`rounded-full capitalize ${severityBadge(t.severity)}`}
@@ -115,9 +121,12 @@ export default async function CompliancePage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="text-[12px] font-semibold text-stt-ink">
+                        <Link
+                          href={t.href}
+                          className="text-[12px] font-semibold text-stt-blue hover:underline"
+                        >
                           {t.title}
-                        </div>
+                        </Link>
                         <div className="text-[11px] text-stt-muted">
                           {t.description}
                         </div>

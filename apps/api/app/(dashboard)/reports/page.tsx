@@ -1,5 +1,10 @@
 import Link from 'next/link';
 import { PrintTcButton } from '@/app/(dashboard)/tc/print-button';
+import {
+  DonutChart,
+  StatBoxes,
+  countBy,
+} from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,12 +35,12 @@ export default async function ReportsPage() {
       .limit(50),
     supabase
       .from('orders')
-      .select('order_number, po_number, status, total_quantity, quantity_unit')
+      .select('id, order_number, po_number, status, total_quantity, quantity_unit')
       .or(
         `organization_id.eq.${orgId},buyer_org_id.eq.${orgId},supplier_org_id.eq.${orgId}`
       )
       .order('created_at', { ascending: false })
-      .limit(30),
+      .limit(50),
     supabase
       .from('material_wallets')
       .select('id')
@@ -56,10 +61,12 @@ export default async function ReportsPage() {
         .eq('wallet_id', wallet.id)
     : { data: [] };
 
-  const tcs = tcsRes.data;
-  const orders = ordersRes.data;
+  const tcs = tcsRes.data ?? [];
+  const orders = ordersRes.data ?? [];
   const facilityCount = facilitiesRes.count ?? 0;
   const generatedAt = new Date().toLocaleString();
+  const tcStatusData = countBy(tcs, (tc) => tc.tc_status ?? '—');
+  const orderStatusData = countBy(orders, (o) => o.status ?? '—');
 
   return (
     <PageWrapper
@@ -87,14 +94,29 @@ export default async function ReportsPage() {
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">
-              {(tcs ?? []).length} TCs
+              {tcs.length} TCs
             </Badge>
             <Badge className="rounded-full bg-stt-blue-soft text-stt-blue">
-              {(orders ?? []).length} orders
+              {orders.length} orders
             </Badge>
             <Badge className="rounded-full bg-[#EDF1F6] text-stt-muted">
               {facilityCount} facilities
             </Badge>
+          </div>
+        </div>
+
+        <div className="print:hidden">
+          <StatBoxes
+            items={[
+              { label: 'TCs', value: tcs.length },
+              { label: 'Orders', value: orders.length },
+              { label: 'Facilities', value: facilityCount },
+              { label: 'Wallet lines', value: (balances ?? []).length },
+            ]}
+          />
+          <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+            <DonutChart title="TC status mix" data={tcStatusData} />
+            <DonutChart title="Order status mix" data={orderStatusData} />
           </div>
         </div>
 
@@ -151,15 +173,15 @@ export default async function ReportsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(tcs ?? []).length === 0 ? (
+              {tcs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-[12px] text-stt-muted">
                     No TCs.
                   </TableCell>
                 </TableRow>
               ) : (
-                (tcs ?? []).map((tc) => (
-                  <TableRow key={tc.id}>
+                tcs.map((tc) => (
+                  <TableRow key={tc.id} className="hover:bg-[#F7FAFC]">
                     <TableCell className="font-mono-stt text-[11px] text-stt-blue">
                       <Link href={`/tc/${tc.id}`} className="hover:underline">
                         {tc.tc_number}
@@ -197,17 +219,19 @@ export default async function ReportsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(orders ?? []).length === 0 ? (
+              {orders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-[12px] text-stt-muted">
                     No orders.
                   </TableCell>
                 </TableRow>
               ) : (
-                (orders ?? []).map((o) => (
-                  <TableRow key={o.order_number}>
+                orders.map((o) => (
+                  <TableRow key={o.id} className="hover:bg-[#F7FAFC]">
                     <TableCell className="font-mono-stt text-[11px] text-stt-blue">
-                      {o.order_number}
+                      <Link href={`/orders/${o.id}`} className="hover:underline">
+                        {o.order_number}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-[12px]">{o.po_number ?? '—'}</TableCell>
                     <TableCell className="font-mono-stt text-[11px]">

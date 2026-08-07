@@ -93,8 +93,15 @@ export default async function SupplyChainPage() {
               </TableRow>
             ) : (
               (ownFacilities ?? []).map((f) => (
-                <TableRow key={f.id}>
-                  <TableCell className="text-[12px] font-semibold">{f.name}</TableCell>
+                <TableRow key={f.id} className="hover:bg-[#F7FAFC]">
+                  <TableCell>
+                    <Link
+                      href={`/facilities/${f.id}`}
+                      className="text-[12px] font-semibold text-stt-blue hover:underline"
+                    >
+                      {f.name}
+                    </Link>
+                  </TableCell>
                   <TableCell className="text-[12px]">{f.facility_type}</TableCell>
                   <TableCell className="font-mono-stt text-[11px]">
                     {f.tier_level ?? '—'}

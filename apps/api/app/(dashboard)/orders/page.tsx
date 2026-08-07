@@ -1,4 +1,11 @@
+import Link from 'next/link';
 import { CreateOrderForm } from '@/app/(dashboard)/orders/create-form';
+import {
+  BarChart,
+  DonutChart,
+  StatBoxes,
+  countBy,
+} from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -27,11 +34,12 @@ export default async function OrdersPage() {
       `organization_id.eq.${ctx.organizationId},buyer_org_id.eq.${ctx.organizationId},supplier_org_id.eq.${ctx.organizationId}`
     )
     .order('created_at', { ascending: false })
-    .limit(40);
+    .limit(50);
 
+  const rows = orders ?? [];
   const partyIds = Array.from(
     new Set(
-      (orders ?? []).flatMap((o) =>
+      rows.flatMap((o) =>
         [o.buyer_org_id, o.supplier_org_id].filter(Boolean) as string[]
       )
     )
@@ -62,6 +70,15 @@ export default async function OrdersPage() {
     }
   }
 
+  const inProduction = rows.filter((o) => o.status === 'in_production').length;
+  const shipped = rows.filter((o) => o.status === 'shipped').length;
+  const delivered = rows.filter((o) => o.status === 'delivered').length;
+  const statusData = countBy(rows, (o) => o.status ?? '—');
+  const seasonData = countBy(
+    rows.filter((o) => o.season),
+    (o) => String(o.season)
+  );
+
   return (
     <PageWrapper
       title="Orders"
@@ -71,12 +88,28 @@ export default async function OrdersPage() {
           : 'Incoming / assigned purchase orders'
       }
     >
+      <StatBoxes
+        items={[
+          { label: 'Total', value: rows.length },
+          { label: 'In production', value: inProduction },
+          { label: 'Shipped', value: shipped },
+          { label: 'Delivered', value: delivered },
+        ]}
+      />
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+        <DonutChart title="Status breakdown" data={statusData} />
+        {seasonData.length > 0 ? (
+          <BarChart title="By season" data={seasonData} />
+        ) : null}
+      </div>
+
       <div className="grid gap-3.5 lg:grid-cols-[1.5fr_1fr]">
         <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
           <div className="flex items-center border-b border-stt-line px-4 py-3">
             <h3 className="text-[12.5px] font-bold">Order list</h3>
             <Badge className="ml-auto rounded-full bg-stt-green-soft text-stt-green-dark">
-              {orders?.length ?? 0}
+              {rows.length}
             </Badge>
           </div>
           <Table>
@@ -86,27 +119,31 @@ export default async function OrdersPage() {
                 <TableHead className="text-[10px] uppercase text-stt-faint">Counterparty</TableHead>
                 <TableHead className="text-[10px] uppercase text-stt-faint">Qty</TableHead>
                 <TableHead className="text-[10px] uppercase text-stt-faint">Status</TableHead>
+                <TableHead className="text-[10px] uppercase text-stt-faint">Open</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(orders ?? []).length === 0 ? (
+              {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-[12px] text-stt-muted">
+                  <TableCell colSpan={5} className="text-[12px] text-stt-muted">
                     No orders yet.
                   </TableCell>
                 </TableRow>
               ) : (
-                (orders ?? []).map((o) => {
+                rows.map((o) => {
                   const counterpartyId =
                     ctx.organizationId === o.buyer_org_id
                       ? o.supplier_org_id
                       : o.buyer_org_id;
                   return (
-                    <TableRow key={o.id}>
+                    <TableRow key={o.id} className="hover:bg-[#F7FAFC]">
                       <TableCell>
-                        <div className="font-mono-stt text-[11px] text-stt-blue">
+                        <Link
+                          href={`/orders/${o.id}`}
+                          className="font-mono-stt text-[11px] text-stt-blue hover:underline"
+                        >
                           {o.order_number}
-                        </div>
+                        </Link>
                         {o.po_number ? (
                           <div className="text-[10px] text-stt-muted">PO {o.po_number}</div>
                         ) : null}
@@ -123,6 +160,14 @@ export default async function OrdersPage() {
                         <Badge className="rounded-full bg-stt-blue-soft text-stt-blue">
                           {o.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/orders/${o.id}`}
+                          className="text-[11px] font-semibold text-stt-blue hover:underline"
+                        >
+                          Open →
+                        </Link>
                       </TableCell>
                     </TableRow>
                   );

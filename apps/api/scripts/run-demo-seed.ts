@@ -1,5 +1,5 @@
 /**
- * One-shot: wipe existing demo batch (if any) then seed ≥10/menu for host org.
+ * One-shot: wipe existing demo batch (if any) then seed ≥25/menu for host org.
  * Usage: npx tsx scripts/run-demo-seed.ts  (from apps/api)
  */
 import { config } from 'dotenv';

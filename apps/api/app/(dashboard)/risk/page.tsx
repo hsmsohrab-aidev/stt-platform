@@ -1,4 +1,8 @@
 import Link from 'next/link';
+import {
+  DonutChart,
+  countBy,
+} from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,6 +41,8 @@ export default async function RiskHubPage() {
     ['Open flags', snapshot.openFlagCount, 'Derived'],
   ];
 
+  const severityData = countBy(snapshot.flags, (f) => f.severity);
+
   return (
     <PageWrapper
       title="Risk Hub"
@@ -64,6 +70,12 @@ export default async function RiskHubPage() {
             </div>
           ))}
         </div>
+
+        {severityData.length > 0 ? (
+          <div className="grid gap-3.5 lg:grid-cols-2">
+            <DonutChart title="Flags by severity" data={severityData} />
+          </div>
+        ) : null}
 
         <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
           <div className="flex items-center border-b border-stt-line px-4 py-3">
@@ -101,7 +113,7 @@ export default async function RiskHubPage() {
                 </TableRow>
               ) : (
                 snapshot.flags.map((f) => (
-                  <TableRow key={f.id}>
+                  <TableRow key={f.id} className="hover:bg-[#F7FAFC]">
                     <TableCell>
                       <Badge
                         className={`rounded-full capitalize ${severityBadge(f.severity)}`}
@@ -109,8 +121,13 @@ export default async function RiskHubPage() {
                         {f.severity}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-[12px] font-semibold text-stt-ink">
-                      {f.title}
+                    <TableCell>
+                      <Link
+                        href={f.href}
+                        className="text-[12px] font-semibold text-stt-blue hover:underline"
+                      >
+                        {f.title}
+                      </Link>
                     </TableCell>
                     <TableCell className="max-w-[280px] text-[11px] text-stt-muted">
                       {f.description}

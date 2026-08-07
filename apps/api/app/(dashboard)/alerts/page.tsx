@@ -3,6 +3,11 @@ import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
 } from '@/app/(dashboard)/alerts/actions';
+import {
+  DonutChart,
+  StatBoxes,
+  countBy,
+} from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,9 +25,11 @@ export default async function AlertsPage() {
     )
     .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false })
-    .limit(50);
+    .limit(60);
 
-  const unread = (notifications ?? []).filter((n) => !n.is_read).length;
+  const rows = notifications ?? [];
+  const unread = rows.filter((n) => !n.is_read).length;
+  const severityData = countBy(rows, (n) => n.severity ?? 'info');
 
   return (
     <PageWrapper
@@ -42,6 +49,19 @@ export default async function AlertsPage() {
         ) : null
       }
     >
+      <StatBoxes
+        items={[
+          { label: 'Unread', value: unread },
+          { label: 'Total', value: rows.length },
+          { label: 'Read', value: rows.length - unread },
+          { label: 'Severities', value: severityData.length },
+        ]}
+      />
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+        <DonutChart title="By severity" data={severityData} />
+      </div>
+
       <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
         <div className="flex items-center border-b border-stt-line px-4 py-3">
           <h3 className="text-[12.5px] font-bold">Inbox</h3>
@@ -50,22 +70,31 @@ export default async function AlertsPage() {
           </Badge>
         </div>
 
-        {(notifications ?? []).length === 0 ? (
+        {rows.length === 0 ? (
           <p className="px-4 py-8 text-center text-[12px] text-stt-muted">
             No alerts yet. When a partner issues a TC to you, it appears here.
           </p>
         ) : (
           <ul className="divide-y divide-stt-line">
-            {(notifications ?? []).map((n) => (
+            {rows.map((n) => (
               <li
                 key={n.id}
-                className={`flex flex-wrap items-start gap-3 px-4 py-3 ${
+                className={`flex flex-wrap items-start gap-3 px-4 py-3 hover:bg-[#F7FAFC] ${
                   n.is_read ? 'bg-white' : 'bg-stt-blue-soft/40'
                 }`}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-[12.5px] font-semibold text-stt-ink">{n.title}</p>
+                    {n.action_url ? (
+                      <Link
+                        href={n.action_url}
+                        className="text-[12.5px] font-semibold text-stt-blue hover:underline"
+                      >
+                        {n.title}
+                      </Link>
+                    ) : (
+                      <p className="text-[12.5px] font-semibold text-stt-ink">{n.title}</p>
+                    )}
                     {!n.is_read ? (
                       <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">
                         New

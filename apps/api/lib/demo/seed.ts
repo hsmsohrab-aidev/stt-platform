@@ -29,7 +29,9 @@ type SeedInput = {
   userId: string;
 };
 
-const N = 10;
+const N = 25;
+/** Partner supplier orgs created (orders/TCs cycle these). Caps for seed performance. */
+const PARTNER_SUPPLIER_COUNT = Math.min(N, 15);
 
 const FACILITY_TYPES = [
   'garment_factory',
@@ -55,6 +57,21 @@ const ORDER_STATUSES = [
   'shipped',
   'delivered',
   'confirmed',
+  'draft',
+  'confirmed',
+  'in_production',
+  'shipped',
+  'delivered',
+  'confirmed',
+  'in_production',
+  'shipped',
+  'delivered',
+  'confirmed',
+  'in_production',
+  'shipped',
+  'delivered',
+  'confirmed',
+  'delivered',
 ] as const;
 
 const SHIP_STATUSES = [
@@ -68,6 +85,21 @@ const SHIP_STATUSES = [
   'delivered',
   'pending',
   'in_transit',
+  'pending',
+  'in_transit',
+  'customs',
+  'delivered',
+  'exception',
+  'in_transit',
+  'customs',
+  'delivered',
+  'pending',
+  'in_transit',
+  'customs',
+  'delivered',
+  'in_transit',
+  'pending',
+  'delivered',
 ] as const;
 
 const TC_STATUSES = [
@@ -81,6 +113,21 @@ const TC_STATUSES = [
   'verified',
   'issued',
   'draft',
+  'issued',
+  'verified',
+  'issued',
+  'verified',
+  'transferred',
+  'issued',
+  'verified',
+  'issued',
+  'draft',
+  'issued',
+  'verified',
+  'issued',
+  'verified',
+  'issued',
+  'transferred',
 ] as const;
 
 const VR_STATUSES = [
@@ -94,6 +141,21 @@ const VR_STATUSES = [
   'open',
   'completed',
   'open',
+  'assigned',
+  'in_progress',
+  'completed',
+  'open',
+  'assigned',
+  'in_progress',
+  'open',
+  'completed',
+  'open',
+  'assigned',
+  'in_progress',
+  'completed',
+  'open',
+  'assigned',
+  'completed',
 ] as const;
 
 const SEVERITIES = [
@@ -105,6 +167,21 @@ const SEVERITIES = [
   'info',
   'medium',
   'high',
+  'low',
+  'info',
+  'info',
+  'low',
+  'medium',
+  'high',
+  'critical',
+  'info',
+  'medium',
+  'high',
+  'low',
+  'info',
+  'medium',
+  'high',
+  'critical',
   'low',
   'info',
 ] as const;
@@ -120,6 +197,21 @@ const PRODUCT_NAMES = [
   'Trail Recycled Shell',
   'City Knit Polo',
   'Harbor Kids Tee',
+  'Baltic Organic Hoodie',
+  'River Stretch Chino',
+  'Summit Softshell Jacket',
+  'Canal Denim Jacket',
+  'Meadow Rib Tank',
+  'Harbor Utility Short',
+  'Nordic Quilted Overshirt',
+  'Coast Terry Sweatshirt',
+  'Fjord Track Pant',
+  'Drift Organic Crew',
+  'Pine Merino Sock Pack',
+  'Seabreeze Camp Shirt',
+  'Alpine Cap Sleeve Tee',
+  'Dockside Cargo Skirt',
+  'Ember Recycled Bomber',
 ];
 
 const SUPPLIER_PARTNERS = [
@@ -133,6 +225,21 @@ const SUPPLIER_PARTNERS = [
   { name: 'Surma Yarn Traders', city: 'Sylhet', tier: 'tier_4' as const },
   { name: 'Karnaphuli Print House', city: 'Chattogram', tier: 'tier_2' as const },
   { name: 'Meghna Accessories Co.', city: 'Cumilla', tier: 'tier_1' as const },
+  { name: 'Tejgaon Knit Composite', city: 'Dhaka', tier: 'tier_1' as const },
+  { name: 'Ashulia Wet Process Ltd.', city: 'Savar', tier: 'tier_3' as const },
+  { name: 'Tongi Fabric Mills', city: 'Gazipur', tier: 'tier_3' as const },
+  { name: 'Feni Embroidery Works', city: 'Feni', tier: 'tier_2' as const },
+  { name: 'Mirpur Trim Suppliers', city: 'Dhaka', tier: 'tier_1' as const },
+  { name: 'Barisal Cotton Ginning', city: 'Barisal', tier: 'tier_4' as const },
+  { name: 'Khulna Denim Wash Co.', city: 'Khulna', tier: 'tier_2' as const },
+  { name: 'Rajshahi Silk Weavers', city: 'Rajshahi', tier: 'tier_3' as const },
+  { name: 'Mymensingh Yarn Hub', city: 'Mymensingh', tier: 'tier_4' as const },
+  { name: 'Bogra Apparel Partners', city: 'Bogura', tier: 'tier_1' as const },
+  { name: 'Jessore Knit Exports', city: 'Jashore', tier: 'tier_2' as const },
+  { name: 'Rangpur Organic Spinners', city: 'Rangpur', tier: 'tier_4' as const },
+  { name: 'Coxs Bazar Logistics BD', city: 'Cox\'s Bazar', tier: 'tier_1' as const },
+  { name: 'Habiganj Finishing Mills', city: 'Habiganj', tier: 'tier_3' as const },
+  { name: 'Pabna Garment Solutions', city: 'Pabna', tier: 'tier_1' as const },
 ];
 
 function daysAgo(n: number): string {
@@ -153,6 +260,10 @@ function slugify(name: string, stamp: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
     .slice(0, 40)}-${stamp}`;
+}
+
+function isBuyerHost(orgType: OrgType): boolean {
+  return orgType === 'brand' || orgType === 'platform_admin';
 }
 
 async function insertOrg(
@@ -204,7 +315,7 @@ async function ensureWallet(admin: SupabaseClient, orgId: string) {
 }
 
 /**
- * Seeds ≥10 realistic rows for every Operate / Assure / Decide list surface.
+ * Seeds ≥25 realistic rows for every Operate / Assure / Decide list surface.
  * Attaches visibility to the host org so the logged-in tenant sees full menus.
  */
 export async function seedDemoDataset(input: SeedInput): Promise<{
@@ -243,11 +354,13 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
   }
 
   const createdPartners: Array<{ id: string; name: string; org_type: OrgType }> = [];
+  const hostAsBuyer = isBuyerHost(hostOrgType);
 
   // ── Brand + auditor ───────────────────────────────────────────────
+  // platform_admin uses host as brandId (no Nordic Loom brand org).
   let brandId = hostOrgId;
   let brandName = hostOrgName;
-  if (hostOrgType !== 'brand') {
+  if (!hostAsBuyer) {
     const brand = await insertOrg(admin, {
       name: 'Nordic Loom Collective',
       slug: `nordic-loom-${stamp}`,
@@ -282,7 +395,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
   summary.push(`Brand · ${brandName}`);
   summary.push(`Auditor · ${auditorName}`);
 
-  // ── 10 suppliers (reuse host as #1 when host is supplier) ──────────
+  // ── Partner suppliers (reuse host as #1 only when host is supplier) ─
   const suppliers: Array<{
     id: string;
     name: string;
@@ -291,8 +404,9 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     facilityId: string;
   }> = [];
 
-  for (let i = 0; i < N; i += 1) {
-    const spec = SUPPLIER_PARTNERS[i];
+  for (let i = 0; i < PARTNER_SUPPLIER_COUNT; i += 1) {
+    const spec = SUPPLIER_PARTNERS[i % SUPPLIER_PARTNERS.length];
+    const facilityType = FACILITY_TYPES[i % FACILITY_TYPES.length];
     let orgId: string;
     let orgName: string;
 
@@ -321,8 +435,8 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
       .from('facilities')
       .insert({
         organization_id: orgId,
-        name: `${spec.city} ${FACILITY_TYPES[i].replace(/_/g, ' ')}`,
-        facility_type: FACILITY_TYPES[i],
+        name: `${spec.city} ${facilityType.replace(/_/g, ' ')}`,
+        facility_type: facilityType,
         country: 'BD',
         city: spec.city,
         address_line1: `${spec.city}, Bangladesh`,
@@ -393,7 +507,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
   }
   summary.push(`${suppliers.length} suppliers + relationships`);
 
-  // Host always gets 10 dedicated facilities (facilities / supply-chain pages)
+  // Host always gets N dedicated facilities (facilities / supply-chain pages)
   const hostFacilityNames = [
     'CEPZ Unit-1 Cut & Sew',
     'CEPZ Unit-2 Finishing',
@@ -405,14 +519,30 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     'EPZ Warehouse A',
     'EPZ Warehouse B',
     'Anowara Sample Room',
+    'CEPZ Unit-3 Assembly',
+    'CEPZ Unit-4 Embroidery',
+    'Agrabad Trim Store',
+    'Halishahar Wash Line',
+    'Patenga Softflow Dye',
+    'Kalurghat Screen Print',
+    'Nasirabad Lab Annex',
+    'EPZ Warehouse C',
+    'EPZ Cold Store',
+    'Anowara Fitting Room',
+    'CEPZ Unit-5 Packing',
+    'Fouzdarhat Cut Room',
+    'Bhatiary Sewing Floor',
+    'Sitakunda Fabric Yard',
+    'Karnaphuli Sample Hub',
   ];
   for (let i = 0; i < N; i += 1) {
+    const facilityType = FACILITY_TYPES[i % FACILITY_TYPES.length];
     const { data: fac, error } = await admin
       .from('facilities')
       .insert({
         organization_id: hostOrgId,
         name: hostFacilityNames[i],
-        facility_type: FACILITY_TYPES[i],
+        facility_type: facilityType,
         country: 'BD',
         city: 'Chattogram',
         address_line1: `Chattogram EPZ Block ${i + 1}`,
@@ -449,18 +579,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
 
   meta.orgIds = createdPartners.map((o) => o.id);
 
-  // Primary trading counterpart for host-visible rows
-  const hostAsSupplier =
-    hostOrgType === 'supplier'
-      ? suppliers[0]
-      : suppliers[0];
-  const issuerForTc =
-    hostOrgType === 'supplier'
-      ? { id: hostOrgId, name: hostOrgName, walletId: hostWalletId, tier: 'tier_1', facilityId: meta.facilityIds[0] }
-      : hostAsSupplier;
-  const receiverForTc = brandId;
-
-  // ── Wallet credits (≥10 materials on host) ────────────────────────
+  // ── Wallet credits (≥N materials on host) ─────────────────────────
   const creditMats = materials.slice(0, N);
   for (let i = 0; i < creditMats.length; i += 1) {
     const m = creditMats[i];
@@ -489,31 +608,35 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     }).catch(() => undefined);
   }
 
-  // Extra credits on brand + partner wallets for realism
-  for (const s of suppliers.slice(0, 5)) {
-    const m = materials[0];
-    const { data: tx } = await admin
-      .from('material_transactions')
-      .insert({
-        wallet_id: s.walletId,
-        material_id: m.id,
-        transaction_type: 'credit',
-        quantity: 8000,
-        unit: 'KG',
-        reference_type: 'opening_balance',
-        description: `Partner stock · ${s.name}`,
-        created_by: userId,
-      })
-      .select('id')
-      .single();
-    if (tx) meta.transactionIds.push(tx.id);
+  // Extra credits on partner wallets (needed when brand/admin TCs cycle issuers)
+  for (const s of suppliers) {
+    for (let mi = 0; mi < Math.min(materials.length, 8); mi += 1) {
+      const m = materials[mi];
+      const { data: tx } = await admin
+        .from('material_transactions')
+        .insert({
+          wallet_id: s.walletId,
+          material_id: m.id,
+          transaction_type: 'credit',
+          quantity: 8000,
+          unit: 'KG',
+          reference_type: 'opening_balance',
+          description: `Partner stock · ${s.name}`,
+          created_by: userId,
+        })
+        .select('id')
+        .single();
+      if (tx) meta.transactionIds.push(tx.id);
+    }
   }
   summary.push(`${N}+ wallet credits / balances`);
 
-  // ── Orders (≥10 visible to host) ──────────────────────────────────
+  // ── Orders (≥N visible to host) ───────────────────────────────────
+  // brand/platform_admin: buyer = host; supplier cycles partners
+  // supplier host: supplier = host
   for (let i = 0; i < N; i += 1) {
-    const supplierOrgId =
-      hostOrgType === 'supplier' ? hostOrgId : suppliers[i % suppliers.length].id;
+    const partner = suppliers[i % suppliers.length];
+    const supplierOrgId = hostOrgType === 'supplier' ? hostOrgId : partner.id;
     const orderNumber = `ORD-2026-${stamp}-${String(i + 1).padStart(2, '0')}`;
     const { data: order, error } = await admin
       .from('orders')
@@ -530,7 +653,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
         order_date: daysAgo(55 - i * 3),
         notes: `${PRODUCT_NAMES[i]} program · EU DC`,
         facility_id:
-          hostOrgType === 'supplier' ? meta.facilityIds[i] : suppliers[i % suppliers.length].facilityId,
+          hostOrgType === 'supplier' ? meta.facilityIds[i] : partner.facilityId,
       })
       .select('id')
       .single();
@@ -545,7 +668,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
   }
   summary.push(`${N} purchase orders`);
 
-  // ── Shipments (≥10) ───────────────────────────────────────────────
+  // ── Shipments (≥N) ────────────────────────────────────────────────
   const ports = [
     ['Chattogram', 'Hamburg'],
     ['Chattogram', 'Rotterdam'],
@@ -557,10 +680,26 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     ['Chattogram', 'Barcelona'],
     ['Chattogram', 'Trieste'],
     ['Chattogram', 'Piraeus'],
+    ['Chattogram', 'Valencia'],
+    ['Chattogram', 'Marseille'],
+    ['Mongla', 'Hamburg'],
+    ['Chattogram', 'Bremerhaven'],
+    ['Chattogram', 'Copenhagen'],
+    ['Chattogram', 'Oslo'],
+    ['Chattogram', 'Helsinki'],
+    ['Chattogram', 'Aarhus'],
+    ['Chattogram', 'Lisbon'],
+    ['Chattogram', 'Genoa'],
+    ['Mongla', 'Rotterdam'],
+    ['Chattogram', 'Zeebrugge'],
+    ['Chattogram', 'Koper'],
+    ['Chattogram', 'Constanta'],
+    ['Chattogram', 'Istanbul'],
   ];
   for (let i = 0; i < N; i += 1) {
-    const shipper =
-      hostOrgType === 'supplier' ? hostOrgId : suppliers[i % suppliers.length].id;
+    const partner = suppliers[i % suppliers.length];
+    const shipper = hostOrgType === 'supplier' ? hostOrgId : partner.id;
+    const [origin, destination] = ports[i];
     const { data: shipment, error } = await admin
       .from('shipments')
       .insert({
@@ -571,13 +710,13 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
         container_number: `TGHU${4500000 + i}`,
         shipper_org_id: shipper,
         consignee_org_id: brandId,
-        origin_port: ports[i][0],
-        destination_port: ports[i][1],
+        origin_port: origin,
+        destination_port: destination,
         country_of_origin: 'BD',
         total_weight_kg: 6000 + i * 700,
         status: SHIP_STATUSES[i],
         current_location:
-          SHIP_STATUSES[i] === 'delivered' ? ports[i][1] : 'Indian Ocean transit',
+          SHIP_STATUSES[i] === 'delivered' ? destination : 'Indian Ocean transit',
         eta: isoDaysAgo(SHIP_STATUSES[i] === 'delivered' ? 8 : -6 - i),
         actual_departure: isoDaysAgo(16 - i),
         actual_arrival: SHIP_STATUSES[i] === 'delivered' ? isoDaysAgo(8) : null,
@@ -591,7 +730,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
       {
         shipment_id: shipment.id,
         event_type: 'created',
-        location: ports[i][0],
+        location: origin,
         description: 'Booking confirmed',
         source: 'manual',
         event_time: isoDaysAgo(18 - i),
@@ -599,7 +738,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
       {
         shipment_id: shipment.id,
         event_type: 'departed',
-        location: ports[i][0],
+        location: origin,
         description: 'Vessel departed',
         source: 'carrier',
         event_time: isoDaysAgo(16 - i),
@@ -607,7 +746,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
       {
         shipment_id: shipment.id,
         event_type: SHIP_STATUSES[i] === 'delivered' ? 'delivered' : 'in_transit',
-        location: SHIP_STATUSES[i] === 'delivered' ? ports[i][1] : 'Colombo',
+        location: SHIP_STATUSES[i] === 'delivered' ? destination : 'Colombo',
         description: 'Milestone update',
         source: 'carrier',
         event_time: isoDaysAgo(4),
@@ -616,17 +755,29 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
   }
   summary.push(`${N} shipments`);
 
-  // ── TCs (≥10) — issue from host when supplier ─────────────────────
+  // ── TCs (≥N) — brand/platform_admin: inbound from partners; supplier: host issues
   for (let i = 0; i < N; i += 1) {
     const material = materials[i % materials.length];
     const qty = 180 + i * 35;
     const status = TC_STATUSES[i];
+    const issuer =
+      hostOrgType === 'supplier'
+        ? {
+            id: hostOrgId,
+            name: hostOrgName,
+            walletId: hostWalletId,
+            tier: 'tier_1',
+            facilityId: meta.facilityIds[0],
+          }
+        : suppliers[i % suppliers.length];
+    const receiverOrgId = brandId;
+
     const { data: tc, error } = await admin
       .from('transaction_certificates')
       .insert({
-        organization_id: issuerForTc.id,
-        issuer_org_id: issuerForTc.id,
-        receiver_org_id: receiverForTc,
+        organization_id: issuer.id,
+        issuer_org_id: issuer.id,
+        receiver_org_id: receiverOrgId,
         tc_status: status === 'draft' ? 'draft' : status,
         total_quantity: qty,
         quantity_unit: 'KG',
@@ -653,7 +804,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
       const { data: debitTx } = await admin
         .from('material_transactions')
         .insert({
-          wallet_id: issuerForTc.walletId,
+          wallet_id: issuer.walletId,
           material_id: material.id,
           transaction_type: 'debit',
           quantity: qty,
@@ -669,8 +820,8 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
 
       await syncMassBalanceForMaterial({
         supabase: admin,
-        organizationId: issuerForTc.id,
-        walletId: issuerForTc.walletId,
+        organizationId: issuer.id,
+        walletId: issuer.walletId,
         materialId: material.id,
       }).catch(() => undefined);
 
@@ -678,8 +829,8 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
         supabase: admin,
         tcId: tc.id,
         tcNumber: tc.tc_number,
-        issuerOrgId: issuerForTc.id,
-        receiverOrgId: receiverForTc,
+        issuerOrgId: issuer.id,
+        receiverOrgId,
         issueDate: tc.issue_date,
         totalQuantity: qty,
         quantityUnit: 'KG',
@@ -696,10 +847,10 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
   }
   summary.push(`${N} transaction certificates`);
 
-  // ── Digital product passports (≥10 on HOST so /dpp fills) ─────────
+  // ── Digital product passports (≥N on HOST so /dpp fills) ──────────
   for (let i = 0; i < N; i += 1) {
     const material = materials[i % materials.length];
-    const published = i < 8;
+    const published = i < 18;
     const { data: passport, error } = await admin
       .from('product_passports')
       .insert({
@@ -785,7 +936,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
   }
   summary.push(`${N} digital product passports`);
 
-  // ── Verification marketplace (≥10) ────────────────────────────────
+  // ── Verification marketplace (≥N) ─────────────────────────────────
   const standardsPool = [
     ['GOTS', 'GRS'],
     ['GRS'],
@@ -797,6 +948,21 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     ['GOTS'],
     ['GRS', 'OEKO-TEX'],
     ['BCI'],
+    ['GOTS', 'SMETA'],
+    ['GRS'],
+    ['OEKO-TEX', 'GOTS'],
+    ['RCS'],
+    ['BCI', 'GRS'],
+    ['SMETA', 'OEKO-TEX'],
+    ['GOTS'],
+    ['GRS', 'SMETA'],
+    ['OEKO-TEX'],
+    ['BCI'],
+    ['GOTS', 'RCS'],
+    ['GRS'],
+    ['SMETA'],
+    ['GOTS', 'OEKO-TEX'],
+    ['BCI', 'SMETA'],
   ];
   for (let i = 0; i < N; i += 1) {
     const status = VR_STATUSES[i];
@@ -840,7 +1006,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
           request_id: vr.id,
           report_title: `Pilot audit · ${PRODUCT_NAMES[i]}`,
           overall_rating: i % 2 === 0 ? 'pass' : 'conditional',
-          score: 70 + i,
+          score: 70 + (i % 25),
           findings_summary: `Demo findings for ${PRODUCT_NAMES[i]}`,
           audit_date: daysAgo(3),
           is_published: true,
@@ -851,7 +1017,7 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
   }
   summary.push(`${N} verification requests (+ audit reports)`);
 
-  // ── Alerts / membership (≥10 each) ────────────────────────────────
+  // ── Alerts / membership (≥N each) ─────────────────────────────────
   for (let i = 0; i < N; i += 1) {
     const { data: row } = await admin
       .from('notifications')

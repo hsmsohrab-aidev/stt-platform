@@ -4,7 +4,15 @@ import type { DemoBatchMeta } from '@/lib/demo/seed';
 async function delIn(admin: SupabaseClient, table: string, column: string, ids: string[]) {
   if (!ids.length) return;
   const { error } = await admin.from(table).delete().in(column, ids);
-  if (error) throw new Error(`${table}: ${error.message}`);
+  if (error) {
+    // Tolerate missing optional tables / columns across environments
+    if (
+      /does not exist|schema cache|Could not find the table/i.test(error.message)
+    ) {
+      return;
+    }
+    throw new Error(`${table}: ${error.message}`);
+  }
 }
 
 /**
@@ -104,7 +112,9 @@ export async function wipeDemoBatches(input: {
 
     if (facilityIds.length) {
       await delIn(admin, 'facility_certifications', 'facility_id', facilityIds);
-      await delIn(admin, 'facility_declarations', 'facility_id', facilityIds);
+      await delIn(admin, 'facility_declarations', 'declaring_facility_id', facilityIds);
+      await delIn(admin, 'facility_declarations', 'declared_facility_id', facilityIds);
+      await delIn(admin, 'supply_chain_tiers', 'facility_id', facilityIds);
       await delIn(admin, 'facilities', 'id', facilityIds);
     }
 

@@ -1,5 +1,10 @@
 import Link from 'next/link';
 import { CreatePassportForm } from '@/app/(dashboard)/dpp/create-form';
+import {
+  DonutChart,
+  StatBoxes,
+  countBy,
+} from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,19 +29,37 @@ export default async function DppListPage() {
     )
     .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false })
-    .limit(40);
+    .limit(50);
+
+  const rows = passports ?? [];
+  const statusData = countBy(rows, (p) => p.status ?? '—');
+  const published = rows.filter((p) => p.status === 'published').length;
+  const drafts = rows.filter((p) => p.status === 'draft').length;
 
   return (
     <PageWrapper
       title="Digital Product Passport"
-      description="EU ESPR-ready · draft → publish → public QR"
+      description="EU ESPR-ready · draft → publish · public QR"
     >
+      <StatBoxes
+        items={[
+          { label: 'Total', value: rows.length },
+          { label: 'Published', value: published },
+          { label: 'Drafts', value: drafts },
+          { label: 'Statuses', value: statusData.length },
+        ]}
+      />
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+        <DonutChart title="By status" data={statusData} />
+      </div>
+
       <div className="grid gap-3.5 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
           <div className="flex items-center border-b border-stt-line px-4 py-3">
             <h3 className="text-[12.5px] font-bold">Passports</h3>
             <Badge className="ml-auto rounded-full bg-stt-green-soft text-stt-green-dark">
-              {passports?.length ?? 0}
+              {rows.length}
             </Badge>
           </div>
           <Table>
@@ -48,15 +71,15 @@ export default async function DppListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(passports ?? []).length === 0 ? (
+              {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-[12px] text-stt-muted">
                     No passports yet — create a draft on the right.
                   </TableCell>
                 </TableRow>
               ) : (
-                (passports ?? []).map((p) => (
-                  <TableRow key={p.id}>
+                rows.map((p) => (
+                  <TableRow key={p.id} className="hover:bg-[#F7FAFC]">
                     <TableCell>
                       <Link
                         href={`/dpp/${p.id}`}

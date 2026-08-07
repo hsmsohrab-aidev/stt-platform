@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { VerifyTcButton } from '@/app/(dashboard)/tc/verify-button';
+import {
+  DonutChart,
+  StatBoxes,
+  countBy,
+} from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -45,7 +50,7 @@ export default async function TcPage() {
           `organization_id.eq.${orgId},issuer_org_id.eq.${orgId},receiver_org_id.eq.${orgId}`
         )
         .order('created_at', { ascending: false })
-        .limit(30),
+        .limit(50),
       loadReceiverOrgOptions(ctx.organizationId, ctx.orgType),
       supabase
         .from('orders')
@@ -65,11 +70,29 @@ export default async function TcPage() {
         .limit(40),
     ]);
 
+  const rows = tcs ?? [];
+  const statusData = countBy(rows, (tc) => tc.tc_status ?? '—');
+  const issued = rows.filter((tc) => tc.tc_status === 'issued').length;
+  const verified = rows.filter((tc) => tc.tc_status === 'verified').length;
+
   return (
     <PageWrapper
       title="Transaction Certificates"
       description="Mass-balance enforced · every transfer certified"
     >
+      <StatBoxes
+        items={[
+          { label: 'Total', value: rows.length },
+          { label: 'Issued', value: issued },
+          { label: 'Verified', value: verified },
+          { label: 'Statuses', value: statusData.length },
+        ]}
+      />
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+        <DonutChart title="By TC status" data={statusData} />
+      </div>
+
       <div className="grid gap-3.5 lg:grid-cols-[1.5fr_1fr]">
         <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
           <div className="border-b border-stt-line px-4 py-3">
@@ -86,18 +109,18 @@ export default async function TcPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(tcs ?? []).length === 0 ? (
+              {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-[12px] text-stt-muted">
                     No certificates yet.
                   </TableCell>
                 </TableRow>
               ) : (
-                (tcs ?? []).map((tc) => {
+                rows.map((tc) => {
                   const canVerify =
                     tc.receiver_org_id === orgId && tc.tc_status === 'issued';
                   return (
-                    <TableRow key={tc.id}>
+                    <TableRow key={tc.id} className="hover:bg-[#F7FAFC]">
                       <TableCell className="font-mono-stt text-[11px] text-stt-blue">
                         <Link
                           href={`/tc/${tc.id}`}

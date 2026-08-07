@@ -1,4 +1,10 @@
 import { CreditForm } from '@/app/(dashboard)/wallet/credit-form';
+import {
+  BarChart,
+  DonutChart,
+  StatBoxes,
+  countBy,
+} from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -11,6 +17,17 @@ import {
 } from '@/components/ui/table';
 import { requireSessionContext } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
+
+const CHART_COLORS = [
+  '#12A45B',
+  '#2D6CDF',
+  '#D98A1F',
+  '#7A4FD0',
+  '#D64545',
+  '#0E2A47',
+  '#5D7189',
+  '#0B7A42',
+];
 
 function asMaterial(
   value: unknown
@@ -59,7 +76,7 @@ export default async function WalletPage() {
           )
           .eq('wallet_id', wallet.id)
           .order('created_at', { ascending: false })
-          .limit(40),
+          .limit(50),
       ])
     : [{ data: [] }, { data: [] }];
 
@@ -78,6 +95,16 @@ export default async function WalletPage() {
   );
   const lowBalance = (balances ?? []).some((b) => Number(b.available_qty) < 100);
 
+  const balanceBars = (balances ?? []).map((b, i) => {
+    const mat = asMaterial(b.materials);
+    return {
+      label: mat?.name ?? 'Material',
+      value: Number(b.available_qty),
+      color: CHART_COLORS[i % CHART_COLORS.length],
+    };
+  });
+  const txTypeData = countBy(txs ?? [], (t) => t.transaction_type ?? '—');
+
   return (
     <PageWrapper
       title="Material Wallet"
@@ -89,23 +116,20 @@ export default async function WalletPage() {
         </div>
       ) : null}
 
-      <div className="mb-3.5 grid gap-3 sm:grid-cols-3">
-        {[
-          ['Received (recent ledger)', creditTotal],
-          ['Issued / debit (recent)', debitTotal],
-          ['Available now', availableTotal],
-        ].map(([label, value]) => (
-          <div
-            key={String(label)}
-            className="rounded-xl border border-stt-line bg-white p-3.5 shadow-[var(--stt-shadow)]"
-          >
-            <div className="text-[10.5px] font-semibold text-stt-muted">{label}</div>
-            <div className="mt-1 font-display text-[20px] font-bold text-stt-ink">
-              {Number(value).toLocaleString()}{' '}
-              <span className="text-[11px] text-stt-muted">KG</span>
-            </div>
-          </div>
-        ))}
+      <StatBoxes
+        items={[
+          { label: 'Received (recent ledger)', value: `${Number(creditTotal).toLocaleString()} KG` },
+          { label: 'Issued / debit (recent)', value: `${Number(debitTotal).toLocaleString()} KG` },
+          { label: 'Available now', value: `${Number(availableTotal).toLocaleString()} KG` },
+          { label: 'Materials', value: (balances ?? []).length },
+        ]}
+      />
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+        {balanceBars.length > 0 ? (
+          <BarChart title="Available by material" data={balanceBars} />
+        ) : null}
+        <DonutChart title="Transaction types" data={txTypeData} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -174,7 +198,7 @@ export default async function WalletPage() {
                 (txs ?? []).map((t) => {
                   const mat = asMaterial(t.materials);
                   return (
-                    <TableRow key={t.id}>
+                    <TableRow key={t.id} className="hover:bg-[#F7FAFC]">
                       <TableCell className="font-mono-stt text-[11px]">
                         {t.transaction_date}
                       </TableCell>

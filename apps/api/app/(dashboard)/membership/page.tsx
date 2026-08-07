@@ -1,4 +1,9 @@
 import { InviteForm } from '@/app/(dashboard)/membership/invite-form';
+import {
+  DonutChart,
+  StatBoxes,
+  countBy,
+} from '@/components/charts/stat-charts';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -27,7 +32,7 @@ export default async function MembershipPage() {
       .select('id, email, token, accepted_at, expires_at, created_at')
       .eq('organization_id', ctx.organizationId)
       .order('created_at', { ascending: false })
-      .limit(20),
+      .limit(50),
   ]);
 
   const userIds = (members ?? []).map((m) => m.user_id);
@@ -37,11 +42,35 @@ export default async function MembershipPage() {
       : { data: [] };
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
+  const inviteRows = invites ?? [];
+  const pendingInvites = inviteRows.filter((i) => !i.accepted_at).length;
+  const inviteStatusData = countBy(inviteRows, (i) =>
+    i.accepted_at ? 'Accepted' : 'Pending'
+  );
+
   return (
     <PageWrapper
       title="Membership"
       description={`${ctx.orgName} · team & invites`}
     >
+      <StatBoxes
+        items={[
+          { label: 'Members', value: members?.length ?? 0 },
+          { label: 'Pending invites', value: pendingInvites },
+          { label: 'Invites (listed)', value: inviteRows.length },
+          {
+            label: 'Accepted invites',
+            value: inviteRows.length - pendingInvites,
+          },
+        ]}
+      />
+
+      {inviteStatusData.length > 0 ? (
+        <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+          <DonutChart title="Invite status" data={inviteStatusData} />
+        </div>
+      ) : null}
+
       <div className="grid gap-3.5 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-3.5">
           <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
@@ -73,7 +102,7 @@ export default async function MembershipPage() {
                     ? role[0]?.name
                     : role?.name;
                   return (
-                    <TableRow key={m.id}>
+                    <TableRow key={m.id} className="hover:bg-[#F7FAFC]">
                       <TableCell>
                         <div className="text-[12px] font-semibold">
                           {p?.full_name ?? 'User'}
@@ -112,15 +141,15 @@ export default async function MembershipPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(invites ?? []).length === 0 ? (
+                {inviteRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="text-[12px] text-stt-muted">
                       No invites yet.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  (invites ?? []).map((i) => (
-                    <TableRow key={i.id}>
+                  inviteRows.map((i) => (
+                    <TableRow key={i.id} className="hover:bg-[#F7FAFC]">
                       <TableCell className="text-[12px]">{i.email}</TableCell>
                       <TableCell className="font-mono-stt text-[10px] text-stt-blue">
                         {i.accepted_at ? (
