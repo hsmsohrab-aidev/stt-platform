@@ -3,6 +3,7 @@
 import { useFormState, useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { registerAction, type AuthActionState } from '@/app/(auth)/actions';
+import { BrandLogo } from '@/components/brand/brand-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -27,9 +28,7 @@ export default function RegisterPage() {
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       <section className="relative hidden flex-col justify-between bg-gradient-to-br from-stt-navy-deep via-stt-navy to-[#0F3B2E] px-12 py-12 text-white lg:flex">
-        <div className="font-display text-[26px] font-extrabold tracking-wide">
-          S<span className="text-stt-green">TT</span>
-        </div>
+        <BrandLogo tone="light" size="lg" withTagline />
         <div>
           <h1 className="max-w-[420px] font-display text-[34px] font-bold leading-[1.2]">
             Join the network.

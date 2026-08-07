@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { BrandLogo } from '@/components/brand/brand-logo';
 import { cn } from '@/lib/utils';
 
 type NavItem = {
@@ -96,12 +97,14 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'relative z-20 flex w-[198px] shrink-0 flex-col overflow-y-auto bg-stt-navy px-2.5 py-3.5',
+        'relative z-20 flex w-[220px] shrink-0 flex-col overflow-y-auto bg-stt-navy px-2.5 py-3.5',
         className
       )}
     >
-      <div className="px-2.5 pb-3.5 font-display text-[17px] font-extrabold tracking-wide text-white">
-        S<span className="text-stt-green">TT</span>
+      <div className="px-1.5 pb-3.5">
+        <Link href="/" prefetch={false} className="block">
+          <BrandLogo tone="light" size="md" withTagline />
+        </Link>
       </div>
       <NavSection title="Operate" items={operate} pathname={pathname} />
       <NavSection title="Assure" items={assure} pathname={pathname} />

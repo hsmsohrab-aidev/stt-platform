@@ -65,7 +65,8 @@
 - Page title (topbar): Sora ~15.5px / 700
 - KPI value: Sora ~23px / 700
 - Table header: 10px uppercase, letter-spacing ~0.6px, color faint
-- Logo wordmark: `S` + green `TT` (Sora 800). Tagline: `SMART TRACEABILITY TECHNOLOGY`
+- Logo wordmark: custom STT mark (S ink · first T green · second T ink, slash cut) + tagline `SUPPLY CHAIN TRACKING & TRACEABILITY`
+- Component: `components/brand/brand-logo.tsx`
 
 ### 1.4 Brand copy
 
