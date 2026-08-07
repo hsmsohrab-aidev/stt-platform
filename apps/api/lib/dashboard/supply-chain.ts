@@ -10,6 +10,9 @@ export type ChainNode = {
   facilityCount: number;
   latestTc: string | null;
   isBrand?: boolean;
+  /** Deep-link target for SC2 click-through */
+  href?: string;
+  facilityId?: string | null;
 };
 
 export async function loadSupplyChainMap(ctx: SessionContext): Promise<ChainNode[]> {
@@ -45,11 +48,15 @@ export async function loadSupplyChainMap(ctx: SessionContext): Promise<ChainNode
 
     const orgById = new Map((orgs ?? []).map((o) => [o.id, o]));
     const facilityCount = new Map<string, number>();
+    const firstFacilityByOrg = new Map<string, string>();
     for (const f of facilities ?? []) {
       facilityCount.set(
         f.organization_id,
         (facilityCount.get(f.organization_id) ?? 0) + 1
       );
+      if (!firstFacilityByOrg.has(f.organization_id)) {
+        firstFacilityByOrg.set(f.organization_id, f.id);
+      }
     }
     const tcByIssuer = new Map<string, string>();
     for (const tc of tcs ?? []) {
@@ -60,13 +67,18 @@ export async function loadSupplyChainMap(ctx: SessionContext): Promise<ChainNode
 
     const nodes: ChainNode[] = (rels ?? []).map((r) => {
       const org = orgById.get(r.supplier_org_id);
+      const facCount = facilityCount.get(r.supplier_org_id) ?? 0;
+      const facilityId =
+        facCount === 1 ? (firstFacilityByOrg.get(r.supplier_org_id) ?? null) : null;
       return {
         tier: r.tier_level ?? 'tier_1',
         title: org?.name ?? 'Supplier',
         subtitle: org?.country ? `${org.country}` : 'Linked supplier',
         orgId: r.supplier_org_id,
-        facilityCount: facilityCount.get(r.supplier_org_id) ?? 0,
+        facilityCount: facCount,
         latestTc: tcByIssuer.get(r.supplier_org_id) ?? null,
+        facilityId,
+        href: facilityId ? `/facilities/${facilityId}` : '/supplier',
       };
     });
 
@@ -78,6 +90,7 @@ export async function loadSupplyChainMap(ctx: SessionContext): Promise<ChainNode
       facilityCount: 0,
       latestTc: null,
       isBrand: true,
+      href: '/brand',
     });
 
     const tierOrder = [
@@ -111,6 +124,7 @@ export async function loadSupplyChainMap(ctx: SessionContext): Promise<ChainNode
         orgId: ctx.organizationId,
         facilityCount: 0,
         latestTc: null,
+        href: '/facilities',
       },
     ];
   }
@@ -122,5 +136,7 @@ export async function loadSupplyChainMap(ctx: SessionContext): Promise<ChainNode
     orgId: ctx.organizationId,
     facilityCount: 1,
     latestTc: null,
+    facilityId: f.id,
+    href: `/facilities/${f.id}`,
   }));
 }

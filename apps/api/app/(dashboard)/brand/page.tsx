@@ -115,7 +115,11 @@ export default async function BrandDashboardPage() {
           { label: 'Suppliers', value: data.summary.totalSuppliers, hint: 'Linked' },
           { label: 'Active orders', value: data.summary.activeOrders },
           { label: 'Pending TCs', value: data.summary.pendingTCs },
-          { label: 'Risk score', value: data.summary.riskScore, hint: 'Lower better' },
+          {
+            label: 'Compliance',
+            value: data.summary.complianceScore,
+            hint: `/100 · risk ${data.summary.riskScore}`,
+          },
         ]}
       />
 

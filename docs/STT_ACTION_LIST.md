@@ -172,6 +172,8 @@ Status: `Todo` until you assign.
 ### Sprint 3 — “Trust & chain”
 4. V1–V4 · SC1–SC2 · B1 · U1 · U2 · R5  
 
+> **Done (2026-08-07):** Verification marketplace tabs/chips + JourneyStrip · Auditor report gallery · Supply-chain tier depth meter + node deep-links · Brand compliance KPI · Supplier pending PO count · Risk mitigation status (persisted).
+
 ### Sprint 4 — “Depth”
 5. SC3 (if GIS approved) · W1–W5 · A4 · P3r  
 

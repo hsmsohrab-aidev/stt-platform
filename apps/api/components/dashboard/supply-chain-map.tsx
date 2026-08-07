@@ -42,7 +42,9 @@ const TIER_ICON: Record<string, LucideIcon> = {
 };
 
 function nodeHref(node: ChainNode): string {
+  if (node.href) return node.href;
   if (node.isBrand) return '/brand';
+  if (node.facilityId) return `/facilities/${node.facilityId}`;
   if (node.tier === 'org') return '/facilities';
   return '/supplier';
 }
@@ -132,7 +134,8 @@ export function SupplyChainMap({ nodes }: { nodes: ChainNode[] }) {
             href={nodeHref(selected)}
             className="inline-flex items-center gap-1 text-[12px] font-semibold text-stt-blue hover:underline"
           >
-            Open related hub <ArrowRight className="size-3.5" />
+            Open related hub
+            {selected.facilityId ? ' / facility' : ''} <ArrowRight className="size-3.5" />
           </Link>
         </div>
       ) : null}

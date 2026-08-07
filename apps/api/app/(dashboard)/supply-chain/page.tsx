@@ -23,6 +23,90 @@ import { loadInteractiveOverview } from '@/lib/dashboard/overview';
 import { loadSupplyChainMap } from '@/lib/dashboard/supply-chain';
 import { createClient } from '@/lib/supabase/server';
 
+const TIER_KEYS = [
+  'tier_1',
+  'tier_2',
+  'tier_3',
+  'tier_4',
+  'tier_5',
+  'tier_6',
+] as const;
+
+function TierDepthMeter({
+  nodes,
+}: {
+  nodes: Array<{ tier: string; isBrand?: boolean }>;
+}) {
+  const counts = TIER_KEYS.map((tier) => ({
+    tier,
+    count: nodes.filter((n) => n.tier === tier).length,
+  }));
+  const visibleTiers = counts.filter((c) => c.count > 0).length;
+  const depthPct = Math.round((visibleTiers / TIER_KEYS.length) * 100);
+  const tier1 = counts[0]?.count ?? 0;
+  const deeper = counts.slice(1).reduce((s, c) => s + c.count, 0);
+
+  return (
+    <div className="mb-3.5 rounded-xl border border-stt-line bg-white p-4 shadow-[var(--stt-shadow)]">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="text-[13.5px] font-bold text-stt-ink">
+            Tier visibility depth
+          </h3>
+          <p className="mt-0.5 text-[11.5px] text-stt-muted">
+            Visible Tier-1 vs deeper tiers (2–6) across mapped nodes
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="font-display text-[22px] font-bold text-stt-navy">
+            {depthPct}%
+          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-stt-faint">
+            {visibleTiers}/6 tiers mapped
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#EDF1F6]">
+        <div
+          className="h-full rounded-full bg-stt-green"
+          style={{ width: `${depthPct}%` }}
+        />
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+        {counts.map((c) => (
+          <div
+            key={c.tier}
+            className="rounded-lg border border-stt-line bg-[#F8FAFC] px-2 py-2 text-center"
+          >
+            <div className="font-mono-stt text-[10px] text-stt-faint">
+              T{c.tier.replace('tier_', '')}
+            </div>
+            <div className="font-display text-[16px] font-bold text-stt-ink">
+              {c.count}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-stt-muted">
+        <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">
+          Tier-1 visible · {tier1}
+        </Badge>
+        <Badge className="rounded-full bg-stt-amber-soft text-stt-amber">
+          Deeper (T2–6) · {deeper}
+        </Badge>
+        {deeper === 0 && tier1 > 0 ? (
+          <span className="text-stt-amber">
+            Link Tier-2+ suppliers to deepen visibility.
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export default async function SupplyChainPage() {
   const ctx = await requireSessionContext();
   const supabase = createClient();
@@ -47,7 +131,7 @@ export default async function SupplyChainPage() {
       title="Supply Chain"
       description={
         brandLike
-          ? 'Interactive map · tier flow · facilities'
+          ? 'Interactive map · tier depth · facilities'
           : 'Facility chain · declare units to extend the map'
       }
       actions={
@@ -74,6 +158,8 @@ export default async function SupplyChainPage() {
           },
         ]}
       />
+
+      <TierDepthMeter nodes={nodes} />
 
       <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
         <DonutChart title="Nodes by tier" data={tierData} />

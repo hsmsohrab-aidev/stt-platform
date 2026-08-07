@@ -75,6 +75,7 @@ export function CreateVerificationForm({
           <option value="physical">Physical / on-site</option>
           <option value="certificate">Certificate review</option>
           <option value="social">Social compliance</option>
+          <option value="material">Material verification</option>
           <option value="esg">ESG assessment</option>
           <option value="supply_chain">Supply chain</option>
         </select>

@@ -96,6 +96,7 @@ export async function loadSupplierDashboardData(ctx: SessionContext) {
     recentTcsResult,
     issuedTCsResult,
     riskSnap,
+    pendingOrdersResult,
   ] = await Promise.all([
       supabase
         .from('material_wallets')
@@ -119,6 +120,11 @@ export async function loadSupplierDashboardData(ctx: SessionContext) {
         .select('id', { count: 'exact', head: true })
         .eq('issuer_org_id', ctx.organizationId),
       loadOrgRiskSnapshot(ctx.organizationId, ctx.orgType),
+      supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('supplier_org_id', ctx.organizationId)
+        .in('status', ['pending', 'confirmed', 'in_production', 'shipped']),
     ]);
 
   const wallet = walletResult.data;
@@ -148,7 +154,7 @@ export async function loadSupplierDashboardData(ctx: SessionContext) {
 
   const summary: SupplierDashboardSummary = {
     walletBalance,
-    pendingOrders: 0,
+    pendingOrders: pendingOrdersResult.count ?? 0,
     issuedTCs: issuedTCsResult.count ?? 0,
     complianceTasks,
     overdueTasksCount,

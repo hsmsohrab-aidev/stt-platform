@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { RiskMitigationControl } from '@/app/(dashboard)/risk/mitigation-control';
 import {
   DonutChart,
   FilterBar,
@@ -36,6 +37,16 @@ function severityBadge(severity: RiskSeverity) {
   return 'bg-[#EDF1F6] text-stt-muted';
 }
 
+function mitigationBadge(status: string) {
+  if (status === 'closed') {
+    return 'bg-stt-green-soft text-stt-green-dark';
+  }
+  if (status === 'in_progress') {
+    return 'bg-stt-blue-soft text-stt-blue';
+  }
+  return 'bg-stt-amber-soft text-stt-amber';
+}
+
 const SEV_COLS = ['critical', 'high', 'medium', 'low'] as const;
 
 export default async function RiskHubPage() {
@@ -43,26 +54,41 @@ export default async function RiskHubPage() {
   const snapshot = await loadOrgRiskSnapshot(ctx.organizationId, ctx.orgType);
   const supabase = createClient();
 
-  const [{ data: notifications }, { count: facilityCount }, { count: supplierCount }] =
-    await Promise.all([
-      supabase
-        .from('notifications')
-        .select('id, created_at, severity')
-        .eq('organization_id', ctx.organizationId)
-        .order('created_at', { ascending: false })
-        .limit(120),
-      supabase
-        .from('facilities')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', ctx.organizationId),
-      supabase
-        .from('supplier_relationships')
-        .select('id', { count: 'exact', head: true })
-        .eq('brand_org_id', ctx.organizationId)
-        .eq('status', 'active'),
-    ]);
+  const [
+    { data: notifications },
+    { count: facilityCount },
+    { count: supplierCount },
+    { data: flagStates },
+  ] = await Promise.all([
+    supabase
+      .from('notifications')
+      .select('id, created_at, severity')
+      .eq('organization_id', ctx.organizationId)
+      .order('created_at', { ascending: false })
+      .limit(120),
+    supabase
+      .from('facilities')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', ctx.organizationId),
+    supabase
+      .from('supplier_relationships')
+      .select('id', { count: 'exact', head: true })
+      .eq('brand_org_id', ctx.organizationId)
+      .eq('status', 'active'),
+    supabase
+      .from('risk_flag_states')
+      .select('flag_key, status')
+      .eq('organization_id', ctx.organizationId),
+  ]);
 
-  const criticalCount = snapshot.flags.filter((f) => f.severity === 'critical').length;
+  const statusByFlag = new Map(
+    (flagStates ?? []).map((s) => [s.flag_key, s.status as 'open' | 'in_progress' | 'closed'])
+  );
+
+  const openFlags = snapshot.flags.filter(
+    (f) => (statusByFlag.get(f.id) ?? 'open') !== 'closed'
+  );
+  const criticalCount = openFlags.filter((f) => f.severity === 'critical').length;
   const monitored =
     (facilityCount ?? 0) +
     (supplierCount ?? 0) +
@@ -76,14 +102,20 @@ export default async function RiskHubPage() {
     SEV_COLS.map((col) => ({
       row,
       col,
-      value: snapshot.flags.filter((f) => f.category === row && f.severity === col)
+      value: openFlags.filter((f) => f.category === row && f.severity === col)
         .length,
       href: `/risk`,
     }))
   );
 
-  const categoryData = countBy(snapshot.flags, (f) => f.category);
-  const severityData = countBy(snapshot.flags, (f) => f.severity);
+  const categoryData = countBy(openFlags, (f) => f.category);
+  const severityData = countBy(openFlags, (f) => f.severity);
+  const mitigationData = countBy(
+    snapshot.flags.map((f) => ({
+      status: statusByFlag.get(f.id) ?? 'open',
+    })),
+    (x) => x.status
+  );
   const trend = trendFromDates(
     (notifications ?? []).map((n) => n.created_at),
     6
@@ -111,7 +143,11 @@ export default async function RiskHubPage() {
         items={[
           { label: 'Critical alerts', value: criticalCount, hint: 'Act now' },
           { label: 'High risk items', value: snapshot.highCount },
-          { label: 'At risk / open', value: snapshot.openFlagCount },
+          {
+            label: 'At risk / open',
+            value: openFlags.length,
+            hint: `${snapshot.flags.length - openFlags.length} closed`,
+          },
           { label: 'Monitored entities', value: monitored },
         ]}
       />
@@ -128,17 +164,22 @@ export default async function RiskHubPage() {
         <TrendChart title="Alert / signal trend (6 mo)" data={trend} color="#D64545" />
       </div>
 
-      {severityData.length > 0 ? (
-        <div className="mb-3.5">
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
+        {severityData.length > 0 ? (
           <DonutChart title="Flags by severity" data={severityData} />
-        </div>
-      ) : null}
+        ) : (
+          <div className="rounded-xl border border-stt-line bg-white p-4 text-[12px] text-stt-muted shadow-[var(--stt-shadow)]">
+            No open severity mix — all flags closed or clear.
+          </div>
+        )}
+        <DonutChart title="Mitigation status" data={mitigationData} />
+      </div>
 
       <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
         <div className="flex items-center border-b border-stt-line px-4 py-3">
           <h3 className="text-[13.5px] font-bold">Top risk alerts</h3>
           <Badge className="ml-auto rounded-full bg-stt-blue-soft text-stt-blue">
-            {snapshot.openFlagCount}
+            {openFlags.length} open
           </Badge>
         </div>
         <Table>
@@ -147,7 +188,7 @@ export default async function RiskHubPage() {
               <TableHead className="text-[10px] uppercase text-stt-faint">Severity</TableHead>
               <TableHead className="text-[10px] uppercase text-stt-faint">Type</TableHead>
               <TableHead className="text-[10px] uppercase text-stt-faint">Flag</TableHead>
-              <TableHead className="text-[10px] uppercase text-stt-faint">Status</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Mitigation</TableHead>
               <TableHead className="text-[10px] uppercase text-stt-faint">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -162,44 +203,50 @@ export default async function RiskHubPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              snapshot.flags.map((f) => (
-                <TableRow key={f.id} className="hover:bg-[#F7FAFC]">
-                  <TableCell>
-                    <Badge
-                      className={`rounded-full capitalize ${severityBadge(f.severity)}`}
-                    >
-                      {f.severity}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-mono-stt text-[11px] text-stt-muted">
-                    {f.kind.replace(/_/g, ' ')}
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={f.href}
-                      className="text-[12px] font-semibold text-stt-blue hover:underline"
-                    >
-                      {f.title}
-                    </Link>
-                    <div className="max-w-[320px] text-[11px] text-stt-muted">
-                      {f.description}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className="rounded-full bg-stt-amber-soft text-stt-amber">
-                      Open
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={f.href}
-                      className="text-[11px] font-semibold text-stt-blue hover:underline"
-                    >
-                      View
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))
+              snapshot.flags.map((f) => {
+                const mitigation = statusByFlag.get(f.id) ?? 'open';
+                return (
+                  <TableRow key={f.id} className="hover:bg-[#F7FAFC]">
+                    <TableCell>
+                      <Badge
+                        className={`rounded-full capitalize ${severityBadge(f.severity)}`}
+                      >
+                        {f.severity}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono-stt text-[11px] text-stt-muted">
+                      {f.kind.replace(/_/g, ' ')}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={f.href}
+                        className="text-[12px] font-semibold text-stt-blue hover:underline"
+                      >
+                        {f.title}
+                      </Link>
+                      <div className="max-w-[320px] text-[11px] text-stt-muted">
+                        {f.description}
+                      </div>
+                      <Badge
+                        className={`mt-1 rounded-full capitalize ${mitigationBadge(mitigation)}`}
+                      >
+                        {mitigation.replace(/_/g, ' ')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <RiskMitigationControl flagKey={f.id} status={mitigation} />
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={f.href}
+                        className="text-[11px] font-semibold text-stt-blue hover:underline"
+                      >
+                        View
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -207,8 +254,8 @@ export default async function RiskHubPage() {
 
       <p className="mt-3.5 rounded-[9px] border border-[#CCDCF9] bg-stt-blue-soft px-3 py-2.5 text-[11px] leading-relaxed text-[#1E4FA8]">
         Risk score {snapshot.riskScore} · compliance score {snapshot.complianceScore}.
-        Heat map and trends use live flags + notification history. Mitigation owners
-        ship in Sprint 3.
+        Mitigation status persists per flag (open / in progress / closed). Owners and
+        due dates ship in a later workflow pass.
       </p>
     </PageWrapper>
   );

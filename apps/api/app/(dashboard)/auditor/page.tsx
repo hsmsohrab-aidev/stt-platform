@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { logoutAction } from '@/app/(auth)/actions';
 import {
   DonutChart,
+  JourneyStrip,
   StatBoxes,
   countBy,
 } from '@/components/charts/stat-charts';
@@ -46,7 +47,7 @@ export default async function AuditorHubPage() {
     supabase
       .from('audit_reports')
       .select(
-        'id, request_id, report_title, overall_rating, score, published_at, created_at'
+        'id, request_id, report_title, overall_rating, score, published_at, created_at, is_published'
       )
       .order('created_at', { ascending: false })
       .limit(25),
@@ -56,6 +57,11 @@ export default async function AuditorHubPage() {
   const reportByRequest = new Map((reports ?? []).map((r) => [r.request_id, r]));
   const statusData = countBy(hub.requests, (r) => r.status ?? '—');
   const typeData = countBy(hub.requests, (r) => r.verification_type ?? '—');
+
+  const hasOpen = hub.kpis.open > 0;
+  const hasActive = hub.kpis.active > 0;
+  const hasReport = (reports ?? []).length > 0;
+  const hasVerified = hub.kpis.completed > 0;
 
   return (
     <PageWrapper
@@ -73,7 +79,7 @@ export default async function AuditorHubPage() {
             </Badge>
           ) : null}
           <Button asChild variant="outline" className="h-8 rounded-[9px] text-xs">
-            <Link href="/verification">Verification</Link>
+            <Link href="/verification">Marketplace</Link>
           </Button>
           <form action={logoutAction}>
             <Button
@@ -87,6 +93,28 @@ export default async function AuditorHubPage() {
         </div>
       }
     >
+      <JourneyStrip
+        steps={[
+          { label: 'Request', done: hub.kpis.total > 0 },
+          {
+            label: 'Marketplace',
+            done: hasOpen || hasActive || hasVerified,
+            current: hasOpen && !hasActive,
+          },
+          {
+            label: 'Auditor',
+            done: hasActive || hasVerified,
+            current: hasActive,
+          },
+          {
+            label: 'Report',
+            done: hasReport,
+            current: hasReport && !hasVerified,
+          },
+          { label: 'Verified', done: hasVerified, current: hasVerified },
+        ]}
+      />
+
       <StatBoxes
         items={[
           { label: 'Total jobs', value: hub.kpis.total },
@@ -99,6 +127,64 @@ export default async function AuditorHubPage() {
       <div className="mb-3.5 grid gap-3.5 lg:grid-cols-2">
         <DonutChart title="By status" data={statusData} />
         <DonutChart title="By verification type" data={typeData} />
+      </div>
+
+      <div className="mb-3.5 rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+        <div className="flex items-center border-b border-stt-line px-4 py-3">
+          <h3 className="text-[13.5px] font-bold">Digital report gallery</h3>
+          <Badge className="ml-auto rounded-full bg-stt-green-soft text-stt-green-dark">
+            {(reports ?? []).length}
+          </Badge>
+        </div>
+        {(reports ?? []).length === 0 ? (
+          <p className="px-4 py-6 text-center text-[12px] text-stt-muted">
+            No reports yet. Complete an assignment in{' '}
+            <Link href="/verification" className="font-semibold text-stt-blue hover:underline">
+              Verification
+            </Link>
+            .
+          </p>
+        ) : (
+          <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            {(reports ?? []).map((r) => (
+              <Link
+                key={r.id}
+                href="/verification?tab=completed"
+                className="rounded-xl border border-stt-line bg-[#F8FAFC] p-3 transition hover:border-stt-green/50 hover:shadow-[var(--stt-shadow)]"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-[12.5px] font-bold leading-snug text-stt-ink">
+                    {r.report_title}
+                  </div>
+                  {r.is_published ? (
+                    <Badge className="shrink-0 rounded-full bg-stt-green-soft text-[9px] text-stt-green-dark">
+                      Published
+                    </Badge>
+                  ) : (
+                    <Badge className="shrink-0 rounded-full bg-stt-amber-soft text-[9px] text-stt-amber">
+                      Draft
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <Badge className="rounded-full bg-stt-blue-soft text-[10px] text-stt-blue">
+                    {r.overall_rating ?? '—'}
+                  </Badge>
+                  {r.score != null ? (
+                    <Badge className="font-mono-stt rounded-full bg-[#EDF1F6] text-[10px] text-stt-navy">
+                      Score {r.score}
+                    </Badge>
+                  ) : null}
+                </div>
+                <div className="mt-2 font-mono-stt text-[10px] text-stt-faint">
+                  {r.published_at
+                    ? new Date(r.published_at).toLocaleDateString()
+                    : new Date(r.created_at).toLocaleDateString()}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-3.5 lg:grid-cols-[1.45fr_1fr]">
@@ -163,7 +249,9 @@ export default async function AuditorHubPage() {
                           → {nameById.get(j.supplier_org_id) ?? 'Supplier'}
                         </div>
                       </TableCell>
-                      <TableCell className="text-[12px]">{j.verification_type}</TableCell>
+                      <TableCell className="text-[12px] capitalize">
+                        {j.verification_type?.replace(/_/g, ' ')}
+                      </TableCell>
                       <TableCell>
                         <Badge className={statusClass[j.status] ?? statusClass.open}>
                           {j.status}
@@ -190,40 +278,12 @@ export default async function AuditorHubPage() {
               asChild
               className="h-8 rounded-[9px] bg-stt-green text-xs hover:bg-stt-green-dark"
             >
-              <Link href="/verification">Open Verification →</Link>
+              <Link href="/verification">Open Marketplace →</Link>
             </Button>
           </div>
         </div>
 
         <div className="space-y-3.5">
-          <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
-            <div className="border-b border-stt-line px-4 py-3">
-              <h3 className="text-[13.5px] font-bold">Recent audit reports</h3>
-            </div>
-            <ul className="divide-y divide-stt-line">
-              {(reports ?? []).length === 0 ? (
-                <li className="px-4 py-5 text-[12px] text-stt-muted">
-                  No published reports yet.
-                </li>
-              ) : (
-                (reports ?? []).slice(0, 12).map((r) => (
-                  <li key={r.id} className="px-4 py-2.5">
-                    <div className="text-[12.5px] font-semibold text-stt-ink">
-                      {r.report_title}
-                    </div>
-                    <div className="mt-0.5 text-[11px] text-stt-muted">
-                      {r.overall_rating}
-                      {r.score != null ? ` · score ${r.score}` : ''}
-                      {r.published_at
-                        ? ` · ${new Date(r.published_at).toLocaleDateString()}`
-                        : ''}
-                    </div>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-
           {hub.myAssignments.length > 0 ? (
             <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
               <div className="border-b border-stt-line px-4 py-3">
@@ -235,9 +295,12 @@ export default async function AuditorHubPage() {
                     key={a.id}
                     className="flex items-center justify-between gap-2 px-4 py-2.5"
                   >
-                    <span className="font-mono-stt text-[11px] text-stt-muted">
+                    <Link
+                      href="/verification?tab=mine"
+                      className="font-mono-stt text-[11px] text-stt-blue hover:underline"
+                    >
                       {a.request_id.slice(0, 8)}…
-                    </span>
+                    </Link>
                     <Badge className="rounded-full bg-stt-blue-soft text-stt-blue">
                       {a.status}
                     </Badge>
