@@ -29,6 +29,112 @@ type SeedInput = {
   userId: string;
 };
 
+const N = 10;
+
+const FACILITY_TYPES = [
+  'garment_factory',
+  'knitting_unit',
+  'weaving_unit',
+  'dyeing_unit',
+  'printing_unit',
+  'washing_unit',
+  'finishing_unit',
+  'packing_logistics',
+  'warehouse',
+  'fabric_supplier',
+] as const;
+
+const ORDER_STATUSES = [
+  'draft',
+  'confirmed',
+  'in_production',
+  'shipped',
+  'delivered',
+  'confirmed',
+  'in_production',
+  'shipped',
+  'delivered',
+  'confirmed',
+] as const;
+
+const SHIP_STATUSES = [
+  'pending',
+  'in_transit',
+  'customs',
+  'delivered',
+  'exception',
+  'in_transit',
+  'customs',
+  'delivered',
+  'pending',
+  'in_transit',
+] as const;
+
+const TC_STATUSES = [
+  'issued',
+  'issued',
+  'verified',
+  'issued',
+  'verified',
+  'transferred',
+  'issued',
+  'verified',
+  'issued',
+  'draft',
+] as const;
+
+const VR_STATUSES = [
+  'open',
+  'assigned',
+  'in_progress',
+  'completed',
+  'open',
+  'assigned',
+  'in_progress',
+  'open',
+  'completed',
+  'open',
+] as const;
+
+const SEVERITIES = [
+  'info',
+  'low',
+  'medium',
+  'high',
+  'critical',
+  'info',
+  'medium',
+  'high',
+  'low',
+  'info',
+] as const;
+
+const PRODUCT_NAMES = [
+  'Nordic Soft Tee',
+  'Harbor Fleece Midlayer',
+  'Coastline Oxford Shirt',
+  'Fjell Merino Base',
+  'Delta Cargo Pant',
+  'Aurora Puffer Vest',
+  'Sundown Linen Dress',
+  'Trail Recycled Shell',
+  'City Knit Polo',
+  'Harbor Kids Tee',
+];
+
+const SUPPLIER_PARTNERS = [
+  { name: 'Chattogram Apparel Ltd.', city: 'Chattogram', tier: 'tier_1' as const },
+  { name: 'Pacific Knitwear BD', city: 'Gazipur', tier: 'tier_2' as const },
+  { name: 'Delta Spinning Mills', city: 'Narayanganj', tier: 'tier_4' as const },
+  { name: 'Jamuna Dyeing Works', city: 'Savar', tier: 'tier_3' as const },
+  { name: 'Padma Weave Industries', city: 'Narsingdi', tier: 'tier_3' as const },
+  { name: 'Bay Finishing Ltd.', city: 'Chattogram', tier: 'tier_2' as const },
+  { name: 'Greenleaf Packing BD', city: 'Dhaka', tier: 'tier_1' as const },
+  { name: 'Surma Yarn Traders', city: 'Sylhet', tier: 'tier_4' as const },
+  { name: 'Karnaphuli Print House', city: 'Chattogram', tier: 'tier_2' as const },
+  { name: 'Meghna Accessories Co.', city: 'Cumilla', tier: 'tier_1' as const },
+];
+
 function daysAgo(n: number): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - n);
@@ -39,6 +145,14 @@ function isoDaysAgo(n: number): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - n);
   return d.toISOString();
+}
+
+function slugify(name: string, stamp: string) {
+  return `${name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 40)}-${stamp}`;
 }
 
 async function insertOrg(
@@ -90,8 +204,8 @@ async function ensureWallet(admin: SupabaseClient, orgId: string) {
 }
 
 /**
- * Seeds a realistic multi-org dataset attached to the logged-in host org.
- * Uses service role so supplier/auditor orgs and cross-party rows can be written.
+ * Seeds ≥10 realistic rows for every Operate / Assure / Decide list surface.
+ * Attaches visibility to the host org so the logged-in tenant sees full menus.
  */
 export async function seedDemoDataset(input: SeedInput): Promise<{
   batchId: string;
@@ -128,18 +242,11 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     throw new Error(matErr?.message ?? 'Materials catalog is empty.');
   }
 
-  const byName = (name: string) =>
-    materials.find((m) => m.name === name)?.id as string | undefined;
-  const organicCotton = byName('Organic Cotton') ?? materials[0].id;
-  const recycledPoly = byName('Recycled Polyester') ?? materials[1]?.id ?? materials[0].id;
-  const bciCotton = byName('BCI Cotton') ?? materials[0].id;
-  const merino = byName('Merino Wool') ?? materials[0].id;
-
-  // ── Partner orgs (realistic trade names) ──────────────────────────
-  let brandId = hostOrgId;
-  let brandName = hostOrgName;
   const createdPartners: Array<{ id: string; name: string; org_type: OrgType }> = [];
 
+  // ── Brand + auditor ───────────────────────────────────────────────
+  let brandId = hostOrgId;
+  let brandName = hostOrgName;
   if (hostOrgType !== 'brand') {
     const brand = await insertOrg(admin, {
       name: 'Nordic Loom Collective',
@@ -152,154 +259,6 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     createdPartners.push(brand);
     brandId = brand.id;
     brandName = brand.name;
-  }
-
-  const supplierSpecs = [
-    {
-      name: 'Chattogram Apparel Ltd.',
-      slug: `chattogram-apparel-${stamp}`,
-      city: 'Chattogram',
-      email: 'ops@chattogramapparel.com',
-      tier: 'tier_1' as const,
-      facility: {
-        name: 'CEPZ Unit-3 Knit Complex',
-        type: 'garment_factory',
-        city: 'Chattogram',
-        capacity: 185000,
-      },
-    },
-    {
-      name: 'Pacific Knitwear BD',
-      slug: `pacific-knitwear-${stamp}`,
-      city: 'Gazipur',
-      email: 'planning@pacificknitwear.com',
-      tier: 'tier_2' as const,
-      facility: {
-        name: 'Gazipur Fabric Mill',
-        type: 'fabric_supplier',
-        city: 'Gazipur',
-        capacity: 420000,
-      },
-    },
-    {
-      name: 'Delta Spinning Mills',
-      slug: `delta-spinning-${stamp}`,
-      city: 'Narayanganj',
-      email: 'qc@deltaspinning.com.bd',
-      tier: 'tier_4' as const,
-      facility: {
-        name: 'Fatullah Spinning Plant',
-        type: 'spinning_mill',
-        city: 'Narayanganj',
-        capacity: 96000,
-      },
-    },
-  ];
-
-  const suppliers: Array<{
-    id: string;
-    name: string;
-    tier: string;
-    walletId: string;
-    facilityId: string;
-  }> = [];
-
-  for (const spec of supplierSpecs) {
-    let orgId: string;
-    let orgName: string;
-    if (hostOrgType === 'supplier' && suppliers.length === 0) {
-      orgId = hostOrgId;
-      orgName = hostOrgName;
-    } else {
-      const org = await insertOrg(admin, {
-        name: spec.name,
-        slug: spec.slug,
-        org_type: 'supplier',
-        country: 'BD',
-        city: spec.city,
-        email: spec.email,
-      });
-      createdPartners.push(org);
-      orgId = org.id;
-      orgName = org.name;
-    }
-
-    const walletId = await ensureWallet(admin, orgId);
-    meta.walletIds.push(walletId);
-
-    const { data: facility, error: facErr } = await admin
-      .from('facilities')
-      .insert({
-        organization_id: orgId,
-        name: spec.facility.name,
-        facility_type: spec.facility.type,
-        country: 'BD',
-        city: spec.facility.city,
-        address_line1: `${spec.facility.city}, Bangladesh`,
-        production_capacity: spec.facility.capacity,
-        is_active: true,
-        is_verified: true,
-        verified_at: isoDaysAgo(30),
-      })
-      .select('id')
-      .single();
-    if (facErr || !facility) throw new Error(facErr?.message ?? 'Facility failed');
-    meta.facilityIds.push(facility.id);
-
-    await admin.from('facility_certifications').insert([
-      {
-        facility_id: facility.id,
-        cert_name: 'GOTS',
-        cert_number: `GOTS-BD-${stamp.slice(-4)}-${suppliers.length + 1}`,
-        issuing_body: 'Control Union',
-        issued_date: daysAgo(220),
-        expiry_date: daysAgo(-400),
-        is_verified: true,
-      },
-      {
-        facility_id: facility.id,
-        cert_name: 'GRS',
-        cert_number: `GRS-BD-${stamp.slice(-4)}-${suppliers.length + 1}`,
-        issuing_body: 'Textile Exchange',
-        issued_date: daysAgo(180),
-        expiry_date: daysAgo(-500),
-        is_verified: true,
-      },
-    ]);
-
-    if (brandId !== orgId) {
-      const { data: rel, error: relErr } = await admin
-        .from('supplier_relationships')
-        .insert({
-          brand_org_id: brandId,
-          supplier_org_id: orgId,
-          tier_level: spec.tier,
-          status: 'active',
-        })
-        .select('id')
-        .single();
-      if (!relErr && rel) meta.relationshipIds.push(rel.id);
-
-      const { data: tier, error: tierErr } = await admin
-        .from('supply_chain_tiers')
-        .insert({
-          brand_org_id: brandId,
-          supplier_org_id: orgId,
-          tier_level: spec.tier,
-        })
-        .select('id')
-        .single();
-      if (!tierErr && tier) meta.tierIds.push(tier.id);
-    }
-
-    suppliers.push({
-      id: orgId,
-      name: orgName,
-      tier: spec.tier,
-      walletId,
-      facilityId: facility.id,
-    });
-    summary.push(`Supplier · ${orgName}`);
   }
 
   let auditorId: string;
@@ -320,88 +279,202 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     auditorId = auditor.id;
     auditorName = auditor.name;
   }
+  summary.push(`Brand · ${brandName}`);
   summary.push(`Auditor · ${auditorName}`);
 
-  meta.orgIds = createdPartners.map((o) => o.id);
+  // ── 10 suppliers (reuse host as #1 when host is supplier) ──────────
+  const suppliers: Array<{
+    id: string;
+    name: string;
+    tier: string;
+    walletId: string;
+    facilityId: string;
+  }> = [];
 
-  const brandWalletId = await ensureWallet(admin, brandId);
-  meta.hostWalletId = brandId === hostOrgId ? brandWalletId : null;
-  if (brandId !== hostOrgId) meta.walletIds.push(brandWalletId);
+  for (let i = 0; i < N; i += 1) {
+    const spec = SUPPLIER_PARTNERS[i];
+    let orgId: string;
+    let orgName: string;
 
-  // Brand HQ facility for supply-chain map density
-  if (hostOrgType === 'brand' || brandId !== hostOrgId) {
-    const { data: brandFac } = await admin
+    if (hostOrgType === 'supplier' && i === 0) {
+      orgId = hostOrgId;
+      orgName = hostOrgName;
+    } else {
+      const org = await insertOrg(admin, {
+        name: spec.name,
+        slug: slugify(spec.name, `${stamp}${i}`),
+        org_type: 'supplier',
+        country: 'BD',
+        city: spec.city,
+        email: `ops@${slugify(spec.name, 'mail')}.com`,
+      });
+      createdPartners.push(org);
+      orgId = org.id;
+      orgName = org.name;
+    }
+
+    const walletId = await ensureWallet(admin, orgId);
+    if (orgId !== hostOrgId) meta.walletIds.push(walletId);
+    else meta.hostWalletId = walletId;
+
+    const { data: facility, error: facErr } = await admin
       .from('facilities')
       .insert({
-        organization_id: brandId,
-        name: `${brandName} Distribution Hub`,
-        facility_type: 'warehouse',
-        country: hostOrgType === 'brand' ? 'BD' : 'SE',
-        city: hostOrgType === 'brand' ? 'Dhaka' : 'Stockholm',
+        organization_id: orgId,
+        name: `${spec.city} ${FACILITY_TYPES[i].replace(/_/g, ' ')}`,
+        facility_type: FACILITY_TYPES[i],
+        country: 'BD',
+        city: spec.city,
+        address_line1: `${spec.city}, Bangladesh`,
+        production_capacity: 80000 + i * 12000,
         is_active: true,
-        is_verified: false,
+        is_verified: i % 3 !== 0,
+        verified_at: i % 3 !== 0 ? isoDaysAgo(20 + i) : null,
+        tier_level: spec.tier,
       })
       .select('id')
       .single();
-    if (brandFac) meta.facilityIds.push(brandFac.id);
+    if (facErr || !facility) throw new Error(facErr?.message ?? 'Facility failed');
+    meta.facilityIds.push(facility.id);
+
+    await admin.from('facility_certifications').insert([
+      {
+        facility_id: facility.id,
+        cert_name: 'GOTS',
+        cert_number: `GOTS-BD-${stamp}-${i + 1}`,
+        issuing_body: 'Control Union',
+        issued_date: daysAgo(200 + i),
+        expiry_date: i < 2 ? daysAgo(5) : daysAgo(-400 - i),
+        is_verified: i % 3 !== 0,
+      },
+      {
+        facility_id: facility.id,
+        cert_name: 'GRS',
+        cert_number: `GRS-BD-${stamp}-${i + 1}`,
+        issuing_body: 'Textile Exchange',
+        issued_date: daysAgo(160 + i),
+        expiry_date: daysAgo(-360 - i),
+        is_verified: true,
+      },
+    ]);
+
+    if (brandId !== orgId) {
+      const { data: rel } = await admin
+        .from('supplier_relationships')
+        .insert({
+          brand_org_id: brandId,
+          supplier_org_id: orgId,
+          tier_level: spec.tier,
+          status: 'active',
+        })
+        .select('id')
+        .single();
+      if (rel) meta.relationshipIds.push(rel.id);
+
+      const { data: tier } = await admin
+        .from('supply_chain_tiers')
+        .insert({
+          brand_org_id: brandId,
+          supplier_org_id: orgId,
+          tier_level: spec.tier,
+        })
+        .select('id')
+        .single();
+      if (tier) meta.tierIds.push(tier.id);
+    }
+
+    suppliers.push({
+      id: orgId,
+      name: orgName,
+      tier: spec.tier,
+      walletId,
+      facilityId: facility.id,
+    });
   }
+  summary.push(`${suppliers.length} suppliers + relationships`);
 
-  // ── Wallet credits (opening balances) ─────────────────────────────
-  const creditPlan: Array<{
-    walletId: string;
-    orgId: string;
-    materialId: string;
-    qty: number;
-    note: string;
-  }> = [
-    {
-      walletId: suppliers[0].walletId,
-      orgId: suppliers[0].id,
-      materialId: organicCotton,
-      qty: 18500,
-      note: 'GOTS lot intake · Q2 ginning season',
-    },
-    {
-      walletId: suppliers[0].walletId,
-      orgId: suppliers[0].id,
-      materialId: recycledPoly,
-      qty: 9200,
-      note: 'GRS yarn receipt · Busan feeder',
-    },
-    {
-      walletId: suppliers[1].walletId,
-      orgId: suppliers[1].id,
-      materialId: bciCotton,
-      qty: 14300,
-      note: 'BCI fabric greige · opening stock',
-    },
-    {
-      walletId: suppliers[2].walletId,
-      orgId: suppliers[2].id,
-      materialId: merino,
-      qty: 4100,
-      note: 'Merino tops · NZ farm group',
-    },
-    {
-      walletId: brandWalletId,
-      orgId: brandId,
-      materialId: organicCotton,
-      qty: 2400,
-      note: 'Inbound TC inventory · sample room',
-    },
+  // Host always gets 10 dedicated facilities (facilities / supply-chain pages)
+  const hostFacilityNames = [
+    'CEPZ Unit-1 Cut & Sew',
+    'CEPZ Unit-2 Finishing',
+    'Agrabad Packing Hub',
+    'Halishahar Knit Line',
+    'Patenga Dye House',
+    'Kalurghat Print Floor',
+    'Nasirabad QC Lab',
+    'EPZ Warehouse A',
+    'EPZ Warehouse B',
+    'Anowara Sample Room',
   ];
+  for (let i = 0; i < N; i += 1) {
+    const { data: fac, error } = await admin
+      .from('facilities')
+      .insert({
+        organization_id: hostOrgId,
+        name: hostFacilityNames[i],
+        facility_type: FACILITY_TYPES[i],
+        country: 'BD',
+        city: 'Chattogram',
+        address_line1: `Chattogram EPZ Block ${i + 1}`,
+        production_capacity: 50000 + i * 8000,
+        is_active: true,
+        is_verified: i > 1,
+        verified_at: i > 1 ? isoDaysAgo(10 + i) : null,
+        tier_level: 'tier_1',
+      })
+      .select('id')
+      .single();
+    if (error || !fac) throw new Error(error?.message ?? 'Host facility failed');
+    meta.facilityIds.push(fac.id);
 
-  for (const c of creditPlan) {
+    await admin.from('facility_certifications').insert({
+      facility_id: fac.id,
+      cert_name: i % 2 === 0 ? 'GOTS' : 'OEKO-TEX',
+      cert_number: `HOST-${stamp}-${i + 1}`,
+      issuing_body: 'Control Union',
+      issued_date: daysAgo(90 + i),
+      expiry_date: i < 3 ? daysAgo(2) : daysAgo(-300),
+      is_verified: i > 1,
+    });
+  }
+  summary.push(`${N} host facilities`);
+
+  const brandWalletId = await ensureWallet(admin, brandId);
+  if (brandId === hostOrgId) meta.hostWalletId = brandWalletId;
+  else meta.walletIds.push(brandWalletId);
+
+  const hostWalletId =
+    meta.hostWalletId ?? (await ensureWallet(admin, hostOrgId));
+  meta.hostWalletId = hostWalletId;
+
+  meta.orgIds = createdPartners.map((o) => o.id);
+
+  // Primary trading counterpart for host-visible rows
+  const hostAsSupplier =
+    hostOrgType === 'supplier'
+      ? suppliers[0]
+      : suppliers[0];
+  const issuerForTc =
+    hostOrgType === 'supplier'
+      ? { id: hostOrgId, name: hostOrgName, walletId: hostWalletId, tier: 'tier_1', facilityId: meta.facilityIds[0] }
+      : hostAsSupplier;
+  const receiverForTc = brandId;
+
+  // ── Wallet credits (≥10 materials on host) ────────────────────────
+  const creditMats = materials.slice(0, N);
+  for (let i = 0; i < creditMats.length; i += 1) {
+    const m = creditMats[i];
+    const qty = 2500 + i * 450;
     const { data: tx, error } = await admin
       .from('material_transactions')
       .insert({
-        wallet_id: c.walletId,
-        material_id: c.materialId,
+        wallet_id: hostWalletId,
+        material_id: m.id,
         transaction_type: 'credit',
-        quantity: c.qty,
+        quantity: qty,
         unit: 'KG',
         reference_type: 'opening_balance',
-        description: c.note,
+        description: `Demo opening · ${m.name}`,
         created_by: userId,
       })
       .select('id')
@@ -410,342 +483,244 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     meta.transactionIds.push(tx.id);
     await syncMassBalanceForMaterial({
       supabase: admin,
-      organizationId: c.orgId,
-      walletId: c.walletId,
-      materialId: c.materialId,
+      organizationId: hostOrgId,
+      walletId: hostWalletId,
+      materialId: m.id,
     }).catch(() => undefined);
   }
-  summary.push('Material wallets credited');
 
-  // ── Orders ────────────────────────────────────────────────────────
-  const orderDefs = [
-    {
-      supplier: suppliers[0],
-      po: 'PO-2026-4481',
-      season: 'SS27',
-      qty: 48000,
-      status: 'in_production',
-      desc: "Women's organic tee · style NL-TEE-220",
-    },
-    {
-      supplier: suppliers[1],
-      po: 'PO-2026-4512',
-      season: 'SS27',
-      qty: 22000,
-      status: 'confirmed',
-      desc: 'Recycled poly fleece · style NL-FLC-088',
-    },
-    {
-      supplier: suppliers[0],
-      po: 'PO-2026-4390',
-      season: 'AW26',
-      qty: 31000,
-      status: 'shipped',
-      desc: 'Merino base layer · style NL-BL-014',
-    },
-  ];
+  // Extra credits on brand + partner wallets for realism
+  for (const s of suppliers.slice(0, 5)) {
+    const m = materials[0];
+    const { data: tx } = await admin
+      .from('material_transactions')
+      .insert({
+        wallet_id: s.walletId,
+        material_id: m.id,
+        transaction_type: 'credit',
+        quantity: 8000,
+        unit: 'KG',
+        reference_type: 'opening_balance',
+        description: `Partner stock · ${s.name}`,
+        created_by: userId,
+      })
+      .select('id')
+      .single();
+    if (tx) meta.transactionIds.push(tx.id);
+  }
+  summary.push(`${N}+ wallet credits / balances`);
 
-  const orderIds: string[] = [];
-  for (let i = 0; i < orderDefs.length; i += 1) {
-    const def = orderDefs[i];
-    const orderNumber = `ORD-2026${String(i + 3).padStart(2, '0')}-${4400 + i}`;
+  // ── Orders (≥10 visible to host) ──────────────────────────────────
+  for (let i = 0; i < N; i += 1) {
+    const supplierOrgId =
+      hostOrgType === 'supplier' ? hostOrgId : suppliers[i % suppliers.length].id;
+    const orderNumber = `ORD-2026-${stamp}-${String(i + 1).padStart(2, '0')}`;
     const { data: order, error } = await admin
       .from('orders')
       .insert({
         organization_id: brandId,
         buyer_org_id: brandId,
-        supplier_org_id: def.supplier.id,
+        supplier_org_id: supplierOrgId,
         order_number: orderNumber,
-        po_number: def.po,
-        season: def.season,
-        total_quantity: def.qty,
+        po_number: `PO-2026-${4500 + i}`,
+        season: i % 2 === 0 ? 'SS27' : 'AW26',
+        total_quantity: 12000 + i * 2500,
         quantity_unit: 'pcs',
-        status: def.status,
-        order_date: daysAgo(40 - i * 7),
-        notes: `${def.desc} · packed for EU DC`,
+        status: ORDER_STATUSES[i],
+        order_date: daysAgo(55 - i * 3),
+        notes: `${PRODUCT_NAMES[i]} program · EU DC`,
+        facility_id:
+          hostOrgType === 'supplier' ? meta.facilityIds[i] : suppliers[i % suppliers.length].facilityId,
       })
       .select('id')
       .single();
     if (error || !order) throw new Error(error?.message ?? 'Order failed');
-    orderIds.push(order.id);
     meta.orderIds.push(order.id);
 
     await admin.from('order_items').insert({
       order_id: order.id,
-      description: def.desc,
-      quantity: def.qty,
+      description: PRODUCT_NAMES[i],
+      quantity: 12000 + i * 2500,
     });
   }
-  summary.push(`${orderIds.length} purchase orders`);
+  summary.push(`${N} purchase orders`);
 
-  // ── Shipments ─────────────────────────────────────────────────────
-  const shipDefs = [
-    {
-      orderId: orderIds[0],
-      shipper: suppliers[0].id,
-      number: `SHP-2607-${5100 + Number(stamp.slice(-3) || 1)}`,
-      bl: 'MEDU8821941',
-      container: 'TGHU4598213',
-      origin: 'Chattogram',
-      dest: 'Hamburg',
-      status: 'in_transit',
-      weight: 12600,
-      loc: 'Colombo anchorage',
-    },
-    {
-      orderId: orderIds[2],
-      shipper: suppliers[0].id,
-      number: `SHP-2606-${5200 + Number(stamp.slice(-3) || 2)}`,
-      bl: 'HLCUBD2605187',
-      container: 'MSCU7712044',
-      origin: 'Chattogram',
-      dest: 'Rotterdam',
-      status: 'delivered',
-      weight: 9800,
-      loc: 'Rotterdam DC',
-    },
+  // ── Shipments (≥10) ───────────────────────────────────────────────
+  const ports = [
+    ['Chattogram', 'Hamburg'],
+    ['Chattogram', 'Rotterdam'],
+    ['Mongla', 'Antwerp'],
+    ['Chattogram', 'Gdansk'],
+    ['Chattogram', 'Felixstowe'],
+    ['Chattogram', 'Le Havre'],
+    ['Chattogram', 'Gothenburg'],
+    ['Chattogram', 'Barcelona'],
+    ['Chattogram', 'Trieste'],
+    ['Chattogram', 'Piraeus'],
   ];
-
-  const shipmentIds: string[] = [];
-  for (const s of shipDefs) {
+  for (let i = 0; i < N; i += 1) {
+    const shipper =
+      hostOrgType === 'supplier' ? hostOrgId : suppliers[i % suppliers.length].id;
     const { data: shipment, error } = await admin
       .from('shipments')
       .insert({
         organization_id: brandId,
-        order_id: s.orderId,
-        shipment_number: s.number,
-        bl_number: s.bl,
-        container_number: s.container,
-        shipper_org_id: s.shipper,
+        order_id: meta.orderIds[i],
+        shipment_number: `SHP-26${stamp.slice(-4)}-${5100 + i}`,
+        bl_number: `BL${stamp.toUpperCase()}${1000 + i}`,
+        container_number: `TGHU${4500000 + i}`,
+        shipper_org_id: shipper,
         consignee_org_id: brandId,
-        origin_port: s.origin,
-        destination_port: s.dest,
-        total_weight_kg: s.weight,
-        status: s.status,
-        current_location: s.loc,
-        eta: isoDaysAgo(s.status === 'delivered' ? 12 : -8),
-        actual_departure: isoDaysAgo(18),
-        actual_arrival: s.status === 'delivered' ? isoDaysAgo(12) : null,
+        origin_port: ports[i][0],
+        destination_port: ports[i][1],
+        country_of_origin: 'BD',
+        total_weight_kg: 6000 + i * 700,
+        status: SHIP_STATUSES[i],
+        current_location:
+          SHIP_STATUSES[i] === 'delivered' ? ports[i][1] : 'Indian Ocean transit',
+        eta: isoDaysAgo(SHIP_STATUSES[i] === 'delivered' ? 8 : -6 - i),
+        actual_departure: isoDaysAgo(16 - i),
+        actual_arrival: SHIP_STATUSES[i] === 'delivered' ? isoDaysAgo(8) : null,
       })
       .select('id')
       .single();
     if (error || !shipment) throw new Error(error?.message ?? 'Shipment failed');
-    shipmentIds.push(shipment.id);
     meta.shipmentIds.push(shipment.id);
 
     await admin.from('shipment_events').insert([
       {
         shipment_id: shipment.id,
         event_type: 'created',
-        location: s.origin,
-        description: `Booking confirmed · ${s.number}`,
+        location: ports[i][0],
+        description: 'Booking confirmed',
         source: 'manual',
-        event_time: isoDaysAgo(20),
+        event_time: isoDaysAgo(18 - i),
       },
       {
         shipment_id: shipment.id,
         event_type: 'departed',
-        location: s.origin,
+        location: ports[i][0],
         description: 'Vessel departed',
         source: 'carrier',
-        event_time: isoDaysAgo(18),
+        event_time: isoDaysAgo(16 - i),
       },
       {
         shipment_id: shipment.id,
-        event_type: s.status === 'delivered' ? 'delivered' : 'in_transit',
-        location: s.loc,
-        description:
-          s.status === 'delivered'
-            ? 'Gate-in at destination DC'
-            : 'Transshipment underway',
+        event_type: SHIP_STATUSES[i] === 'delivered' ? 'delivered' : 'in_transit',
+        location: SHIP_STATUSES[i] === 'delivered' ? ports[i][1] : 'Colombo',
+        description: 'Milestone update',
         source: 'carrier',
-        event_time: isoDaysAgo(s.status === 'delivered' ? 12 : 3),
+        event_time: isoDaysAgo(4),
       },
     ]);
   }
-  summary.push(`${shipmentIds.length} shipments with milestones`);
+  summary.push(`${N} shipments`);
 
-  // ── Transaction certificates ──────────────────────────────────────
-  async function issueTc(opts: {
-    issuer: (typeof suppliers)[0];
-    materialId: string;
-    qty: number;
-    certification: string;
-    orderId?: string;
-    shipmentId?: string;
-    status?: string;
-  }) {
+  // ── TCs (≥10) — issue from host when supplier ─────────────────────
+  for (let i = 0; i < N; i += 1) {
+    const material = materials[i % materials.length];
+    const qty = 180 + i * 35;
+    const status = TC_STATUSES[i];
     const { data: tc, error } = await admin
       .from('transaction_certificates')
       .insert({
-        organization_id: opts.issuer.id,
-        issuer_org_id: opts.issuer.id,
-        receiver_org_id: brandId,
-        tc_status: opts.status ?? 'issued',
-        total_quantity: opts.qty,
+        organization_id: issuerForTc.id,
+        issuer_org_id: issuerForTc.id,
+        receiver_org_id: receiverForTc,
+        tc_status: status === 'draft' ? 'draft' : status,
+        total_quantity: qty,
         quantity_unit: 'KG',
-        issue_date: daysAgo(14),
-        notes: `${opts.certification} transfer · ${opts.issuer.name}`,
+        issue_date: daysAgo(30 - i),
+        notes: `${material.standard ?? 'Certified'} transfer · ${PRODUCT_NAMES[i]}`,
         created_by: userId,
-        ...(opts.orderId ? { order_id: opts.orderId } : {}),
-        ...(opts.shipmentId ? { shipment_id: opts.shipmentId } : {}),
+        order_id: meta.orderIds[i],
+        shipment_id: meta.shipmentIds[i],
       })
       .select('id, tc_number, issue_date')
       .single();
     if (error || !tc) throw new Error(error?.message ?? 'TC failed');
+    meta.tcIds.push(tc.id);
 
     await admin.from('tc_line_items').insert({
       tc_id: tc.id,
-      material_id: opts.materialId,
-      quantity: opts.qty,
+      material_id: material.id,
+      quantity: qty,
       unit: 'KG',
-      certification: opts.certification,
+      certification: material.standard ?? material.name,
     });
 
-    const { data: debitTx, error: debitErr } = await admin
-      .from('material_transactions')
-      .insert({
-        wallet_id: opts.issuer.walletId,
-        material_id: opts.materialId,
-        transaction_type: 'debit',
-        quantity: opts.qty,
-        unit: 'KG',
-        reference_type: 'tc',
-        reference_id: tc.id,
-        description: `TC issue ${tc.tc_number}`,
-        created_by: userId,
-      })
-      .select('id')
-      .single();
-    if (debitErr) throw new Error(debitErr.message);
-    if (debitTx) meta.transactionIds.push(debitTx.id);
-
-    await syncMassBalanceForMaterial({
-      supabase: admin,
-      organizationId: opts.issuer.id,
-      walletId: opts.issuer.walletId,
-      materialId: opts.materialId,
-    }).catch(() => undefined);
-
-    await anchorTcDocument({
-      supabase: admin,
-      tcId: tc.id,
-      tcNumber: tc.tc_number,
-      issuerOrgId: opts.issuer.id,
-      receiverOrgId: brandId,
-      issueDate: tc.issue_date,
-      totalQuantity: opts.qty,
-      quantityUnit: 'KG',
-      lines: [
-        {
-          material_id: opts.materialId,
-          quantity: opts.qty,
+    if (status !== 'draft') {
+      const { data: debitTx } = await admin
+        .from('material_transactions')
+        .insert({
+          wallet_id: issuerForTc.walletId,
+          material_id: material.id,
+          transaction_type: 'debit',
+          quantity: qty,
           unit: 'KG',
-          certification: opts.certification,
-        },
-      ],
-    }).catch(() => undefined);
+          reference_type: 'tc',
+          reference_id: tc.id,
+          description: `TC issue ${tc.tc_number}`,
+          created_by: userId,
+        })
+        .select('id')
+        .single();
+      if (debitTx) meta.transactionIds.push(debitTx.id);
 
-    meta.tcIds.push(tc.id);
-    return tc;
+      await syncMassBalanceForMaterial({
+        supabase: admin,
+        organizationId: issuerForTc.id,
+        walletId: issuerForTc.walletId,
+        materialId: material.id,
+      }).catch(() => undefined);
+
+      await anchorTcDocument({
+        supabase: admin,
+        tcId: tc.id,
+        tcNumber: tc.tc_number,
+        issuerOrgId: issuerForTc.id,
+        receiverOrgId: receiverForTc,
+        issueDate: tc.issue_date,
+        totalQuantity: qty,
+        quantityUnit: 'KG',
+        lines: [
+          {
+            material_id: material.id,
+            quantity: qty,
+            unit: 'KG',
+            certification: material.standard ?? material.name,
+          },
+        ],
+      }).catch(() => undefined);
+    }
   }
+  summary.push(`${N} transaction certificates`);
 
-  const tc1 = await issueTc({
-    issuer: suppliers[0],
-    materialId: organicCotton,
-    qty: 4200,
-    certification: 'GOTS',
-    orderId: orderIds[0],
-    shipmentId: shipmentIds[0],
-  });
-  const tc2 = await issueTc({
-    issuer: suppliers[1],
-    materialId: bciCotton,
-    qty: 3100,
-    certification: 'BCI',
-    orderId: orderIds[1],
-  });
-  await issueTc({
-    issuer: suppliers[0],
-    materialId: recycledPoly,
-    qty: 1800,
-    certification: 'GRS',
-    orderId: orderIds[2],
-    shipmentId: shipmentIds[1],
-    status: 'verified',
-  });
-  summary.push('Transaction certificates issued + anchored');
-
-  // Credit brand wallet from verified inbound (already have opening; add received)
-  {
-    const { data: inbound, error: inboundErr } = await admin
-      .from('material_transactions')
-      .insert({
-        wallet_id: brandWalletId,
-        material_id: recycledPoly,
-        transaction_type: 'credit',
-        quantity: 1800,
-        unit: 'KG',
-        reference_type: 'tc',
-        reference_id: tc1.id,
-        description: `Inbound GRS from ${suppliers[0].name}`,
-        created_by: userId,
-      })
-      .select('id')
-      .single();
-    if (inboundErr) throw new Error(inboundErr.message);
-    if (inbound) meta.transactionIds.push(inbound.id);
-  }
-
-  // ── Digital product passports ─────────────────────────────────────
-  const passportDefs = [
-    {
-      name: 'Nordic Soft Tee',
-      sku: 'NL-TEE-220-WHT',
-      category: 'apparel',
-      origin: 'BD',
-      composition: [
-        { material: 'Organic Cotton', pct: 92, certified: true },
-        { material: 'Elastane', pct: 8, certified: false },
-      ],
-      carbon: 4.8,
-      water: 1860,
-      tcId: tc1.id,
-      materialId: organicCotton,
-    },
-    {
-      name: 'Harbor Fleece Midlayer',
-      sku: 'NL-FLC-088-NVY',
-      category: 'apparel',
-      origin: 'BD',
-      composition: [
-        { material: 'Recycled Polyester', pct: 100, certified: true },
-      ],
-      carbon: 6.2,
-      water: 940,
-      tcId: tc2.id,
-      materialId: recycledPoly,
-    },
-  ];
-
-  for (const p of passportDefs) {
+  // ── Digital product passports (≥10 on HOST so /dpp fills) ─────────
+  for (let i = 0; i < N; i += 1) {
+    const material = materials[i % materials.length];
+    const published = i < 8;
     const { data: passport, error } = await admin
       .from('product_passports')
       .insert({
-        organization_id: brandId,
-        product_name: p.name,
-        product_sku: p.sku,
-        product_category: p.category,
-        country_of_origin: p.origin,
-        material_composition: p.composition,
-        carbon_footprint_kg: p.carbon,
-        water_usage_liters: p.water,
+        organization_id: hostOrgId,
+        product_name: PRODUCT_NAMES[i],
+        product_sku: `NL-${200 + i}-${String(i).padStart(3, '0')}`,
+        product_category: 'apparel',
+        season: i % 2 === 0 ? 'SS27' : 'AW26',
+        country_of_origin: 'BD',
+        material_composition: [
+          { material: material.name, pct: 90 + (i % 8), certified: true },
+          { material: 'Elastane', pct: 10 - (i % 8), certified: false },
+        ],
+        carbon_footprint_kg: 3.2 + i * 0.45,
+        water_usage_liters: 900 + i * 120,
         care_instructions: {
-          text: 'Wash cold, hang dry. Return to partner store for fiber recycling.',
+          text: 'Wash cold, hang dry. Partner take-back eligible.',
         },
-        recyclability_info: 'Fiber-to-fiber eligible via partner take-back.',
-        status: 'published',
-        published_at: isoDaysAgo(5),
+        recyclability_info: 'Fiber-to-fiber eligible',
+        status: published ? 'published' : 'draft',
+        published_at: published ? isoDaysAgo(8 - (i % 5)) : null,
         created_by: userId,
       })
       .select('id')
@@ -755,18 +730,18 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
 
     await admin.from('passport_materials').insert({
       passport_id: passport.id,
-      material_id: p.materialId,
-      percentage: p.composition[0]?.pct ?? 100,
-      tc_id: p.tcId,
-      certification: p.composition[0]?.material ?? null,
-      is_verified: true,
-      origin_country: p.origin,
+      material_id: material.id,
+      percentage: 92,
+      tc_id: meta.tcIds[i] ?? null,
+      certification: material.standard,
+      is_verified: published,
+      origin_country: 'BD',
     });
 
     await admin.from('passport_supply_chain').insert([
       {
         passport_id: passport.id,
-        display_name: suppliers[2].name,
+        display_name: suppliers[Math.min(2, suppliers.length - 1)].name,
         process_type: 'spinning',
         country: 'BD',
         tier_level: 'tier_4',
@@ -775,20 +750,11 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
       },
       {
         passport_id: passport.id,
-        display_name: suppliers[1].name,
-        process_type: 'knitting',
-        country: 'BD',
-        tier_level: 'tier_2',
-        sequence_order: 2,
-        is_visible_to_public: true,
-      },
-      {
-        passport_id: passport.id,
-        display_name: suppliers[0].name,
+        display_name: hostOrgName,
         process_type: 'cut_sew',
         country: 'BD',
         tier_level: 'tier_1',
-        sequence_order: 3,
+        sequence_order: 2,
         is_visible_to_public: true,
       },
     ]);
@@ -796,10 +762,10 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
     await admin.from('passport_sustainability').insert({
       passport_id: passport.id,
       metric_name: 'carbon_footprint',
-      metric_value: p.carbon,
+      metric_value: 3.2 + i * 0.45,
       metric_unit: 'kg_co2e',
-      verification_source: 'Higgs MSI + facility primary data',
-      is_verified: true,
+      verification_source: 'Higgs MSI + facility data',
+      is_verified: published,
     });
 
     await admin.from('passport_qr_codes').insert([
@@ -812,131 +778,99 @@ export async function seedDemoDataset(input: SeedInput): Promise<{
       {
         passport_id: passport.id,
         qr_type: 'batch',
-        qr_data: `STT-B-SS27-${passport.id.slice(0, 6).toUpperCase()}`,
+        qr_data: `STT-B-${stamp}-${i + 1}`,
         is_active: true,
       },
     ]);
   }
-  summary.push(`${passportDefs.length} digital product passports`);
+  summary.push(`${N} digital product passports`);
 
-  // ── Verification marketplace ──────────────────────────────────────
-  const { data: vr, error: vrErr } = await admin
-    .from('verification_requests')
-    .insert({
-      buyer_org_id: brandId,
-      supplier_org_id: suppliers[0].id,
-      verification_type: 'physical',
-      scope: 'CEPZ Unit-3 capacity, GOTS process, social compliance',
-      standards: ['GOTS', 'GRS', 'SMETA'],
-      deadline_date: daysAgo(-21),
-      budget_max_usd: 1850,
-      notes: 'Priority pre-shipment verification for SS27 tee program',
-      status: 'assigned',
-      created_by: userId,
-    })
-    .select('id, request_number')
-    .single();
-  if (vrErr || !vr) throw new Error(vrErr?.message ?? 'Verification failed');
-  meta.verificationIds.push(vr.id);
-
-  await admin.from('verification_assignments').insert({
-    request_id: vr.id,
-    auditor_org_id: auditorId,
-    status: 'accepted',
-    assigned_at: isoDaysAgo(4),
-    accepted_at: isoDaysAgo(3),
-  });
-
-  const { data: vr2 } = await admin
-    .from('verification_requests')
-    .insert({
-      buyer_org_id: brandId,
-      supplier_org_id: suppliers[1].id,
-      verification_type: 'certificate',
-      scope: 'GRS scope certificate authenticity',
-      standards: ['GRS'],
-      deadline_date: daysAgo(-35),
-      budget_max_usd: 650,
-      status: 'open',
-      created_by: userId,
-    })
-    .select('id')
-    .single();
-  if (vr2) meta.verificationIds.push(vr2.id);
-  summary.push('Verification requests + auditor assignment');
-
-  // ── Membership invite + notifications / alerts ────────────────────
-  const { data: invite } = await admin
-    .from('invitations')
-    .insert({
-      organization_id: brandId,
-      email: 'maya.rahman@nordicloom.com',
-      invited_by: userId,
-      expires_at: isoDaysAgo(-14),
-    })
-    .select('id')
-    .single();
-  if (invite) meta.invitationIds.push(invite.id);
-
-  const notifRows = [
-    {
-      organization_id: brandId,
-      title: `TC received · ${tc1.tc_number}`,
-      body: `${suppliers[0].name} issued GOTS organic cotton to your wallet.`,
-      severity: 'info',
-      module: 'tc',
-      entity_type: 'transaction_certificate',
-      entity_id: tc1.id,
-      action_url: `/tc/${tc1.id}`,
-    },
-    {
-      organization_id: brandId,
-      title: `Shipment in transit · ${shipDefs[0].number}`,
-      body: 'Container TGHU4598213 reported at Colombo anchorage.',
-      severity: 'warning',
-      module: 'shipments',
-      entity_type: 'shipment',
-      entity_id: shipmentIds[0],
-      action_url: `/shipments/${shipmentIds[0]}`,
-    },
-    {
-      organization_id: brandId,
-      title: `Verification assigned · ${vr.request_number}`,
-      body: `${auditorName} accepted the physical verification at CEPZ Unit-3.`,
-      severity: 'success',
-      module: 'verification',
-      entity_type: 'verification_request',
-      entity_id: vr.id,
-      action_url: '/verification',
-    },
-    {
-      organization_id: suppliers[0].id,
-      title: 'Purchase order confirmed',
-      body: `PO-2026-4481 from ${brandName} is in production.`,
-      severity: 'info',
-      module: 'orders',
-      entity_type: 'order',
-      entity_id: orderIds[0],
-      action_url: '/orders',
-    },
+  // ── Verification marketplace (≥10) ────────────────────────────────
+  const standardsPool = [
+    ['GOTS', 'GRS'],
+    ['GRS'],
+    ['SMETA', 'GOTS'],
+    ['OEKO-TEX'],
+    ['BCI', 'GOTS'],
+    ['GRS', 'RCS'],
+    ['SMETA'],
+    ['GOTS'],
+    ['GRS', 'OEKO-TEX'],
+    ['BCI'],
   ];
+  for (let i = 0; i < N; i += 1) {
+    const status = VR_STATUSES[i];
+    const supplierId =
+      hostOrgType === 'supplier' ? hostOrgId : suppliers[i % suppliers.length].id;
+    const { data: vr, error } = await admin
+      .from('verification_requests')
+      .insert({
+        buyer_org_id: brandId,
+        supplier_org_id: supplierId,
+        verification_type: i % 2 === 0 ? 'physical' : 'certificate',
+        scope: `Demo scope ${i + 1} · ${PRODUCT_NAMES[i]}`,
+        standards: standardsPool[i],
+        deadline_date: daysAgo(-14 - i),
+        budget_max_usd: 500 + i * 120,
+        notes: 'Pilot verification batch',
+        status,
+        created_by: userId,
+      })
+      .select('id')
+      .single();
+    if (error || !vr) throw new Error(error?.message ?? 'Verification failed');
+    meta.verificationIds.push(vr.id);
 
-  for (const n of notifRows) {
+    if (status !== 'open') {
+      await admin.from('verification_assignments').insert({
+        request_id: vr.id,
+        auditor_org_id: auditorId,
+        status: status === 'completed' ? 'completed' : 'accepted',
+        assigned_at: isoDaysAgo(6),
+        accepted_at: isoDaysAgo(5),
+      });
+    }
+  }
+  summary.push(`${N} verification requests`);
+
+  // ── Alerts / membership (≥10 each) ────────────────────────────────
+  for (let i = 0; i < N; i += 1) {
     const { data: row } = await admin
       .from('notifications')
       .insert({
-        ...n,
+        organization_id: hostOrgId,
+        title: `Demo alert ${i + 1} · ${PRODUCT_NAMES[i]}`,
+        body: `Pilot notification for ${PRODUCT_NAMES[i]} workflow.`,
+        severity: SEVERITIES[i],
+        module: ['orders', 'shipments', 'tc', 'verification', 'wallet'][i % 5],
+        entity_type: 'demo',
+        action_url: ['/orders', '/shipments', '/tc', '/verification', '/wallet'][i % 5],
         channel: 'in_app',
-        is_read: false,
+        is_read: i % 3 === 0,
       })
       .select('id')
       .single();
     if (row) meta.notificationIds.push(row.id);
   }
-  summary.push('Alerts + membership invite');
+
+  for (let i = 0; i < N; i += 1) {
+    const { data: invite } = await admin
+      .from('invitations')
+      .insert({
+        organization_id: hostOrgId,
+        email: `pilot.user${i + 1}@nordicloom-demo.com`,
+        invited_by: userId,
+        expires_at: isoDaysAgo(-10 - i),
+      })
+      .select('id')
+      .single();
+    if (invite) meta.invitationIds.push(invite.id);
+  }
+  summary.push(`${N} alerts + ${N} membership invites`);
+  summary.push('Risk · Compliance · Sustainability · Reports derived from ops data');
 
   meta.summary = summary;
-  const label = `Pilot dataset · ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+  const label = `Full pilot · ${N}/menu · ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`;
 
   const { data: batch, error: batchErr } = await admin
     .from('demo_batches')

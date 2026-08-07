@@ -59,7 +59,7 @@ export default async function WalletPage() {
           )
           .eq('wallet_id', wallet.id)
           .order('created_at', { ascending: false })
-          .limit(12),
+          .limit(40),
       ])
     : [{ data: [] }, { data: [] }];
 

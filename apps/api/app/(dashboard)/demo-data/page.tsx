@@ -48,16 +48,15 @@ export default async function DemoDataPage() {
         <div className="rounded-xl border border-stt-line bg-white p-4 shadow-[var(--stt-shadow)]">
           <h3 className="text-[13px] font-bold text-stt-ink">What gets filled</h3>
           <ul className="mt-2 space-y-1.5 text-[12px] leading-relaxed text-stt-muted">
-            <li>· Supplier chain: Chattogram Apparel, Pacific Knitwear, Delta Spinning</li>
-            <li>· Auditor: SGC Global Assurance</li>
-            <li>· Facilities + GOTS/GRS certificates</li>
-            <li>· Material wallets & mass balance</li>
-            <li>· Purchase orders & ocean shipments</li>
-            <li>· Transaction certificates (hashed/anchored)</li>
-            <li>· Digital product passports + QR variants</li>
-            <li>· Verification marketplace requests</li>
-            <li>· Alerts / membership invite</li>
-            <li>· Risk · Compliance · Sustainability (derived)</li>
+            <li>· ≥10 suppliers + brand (Nordic Loom) + auditor (SGC)</li>
+            <li>· ≥10 host facilities + partner sites + certs</li>
+            <li>· ≥10 wallet credits / balances (all active materials)</li>
+            <li>· ≥10 orders · ≥10 shipments · ≥10 TCs</li>
+            <li>· ≥10 digital product passports + QR</li>
+            <li>· ≥10 verification requests (+ assignments)</li>
+            <li>· ≥10 alerts · ≥10 membership invites</li>
+            <li>· Materials catalog already ≥10 (shared)</li>
+            <li>· Risk · Compliance · Sustainability · Reports derived</li>
           </ul>
 
           {summary.length > 0 ? (

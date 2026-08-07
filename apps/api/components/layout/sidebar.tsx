@@ -12,6 +12,7 @@ type NavItem = {
 
 const operate: NavItem[] = [
   { href: '/', label: 'Dashboard' },
+  { href: '/demo-data', label: 'Demo Data' },
   { href: '/brand', label: 'Brand hub' },
   { href: '/supplier', label: 'Supplier hub' },
   { href: '/auditor', label: 'Auditor hub' },
@@ -33,7 +34,6 @@ const assure: NavItem[] = [
 ];
 
 const decide: NavItem[] = [
-  { href: '/demo-data', label: 'Demo Data' },
   { href: '/reports', label: 'Reports' },
   { href: '/alerts', label: 'Alerts' },
   { href: '/membership', label: 'Membership' },
