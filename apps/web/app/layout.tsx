@@ -1,23 +1,31 @@
 import type { Metadata } from 'next';
-import localFont from 'next/font/local';
+import { Inter, JetBrains_Mono, Sora } from 'next/font/google';
 import './globals.css';
 
-const geistSans = localFont({
-  src: './fonts/GeistVF.woff',
-  variable: '--font-geist-sans',
-  weight: '100 900',
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
 });
 
-const geistMono = localFont({
-  src: './fonts/GeistMonoVF.woff',
-  variable: '--font-geist-mono',
-  weight: '100 900',
+const sora = Sora({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-sora',
+  display: 'swap',
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['500', '600'],
+  variable: '--font-mono',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
   title: 'STT Platform',
   description:
-    'Smart Traceability Technology — supply chain intelligence & digital product passport',
+    'Smart Traceability Technology — One Platform. Complete Transparency. From Source to Consumer.',
 };
 
 export default function RootLayout({
@@ -27,7 +35,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${inter.variable} ${sora.variable} ${jetbrains.variable} antialiased`}
+      >
         {children}
       </body>
     </html>

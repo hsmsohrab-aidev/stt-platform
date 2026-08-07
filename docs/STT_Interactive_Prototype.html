@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STT Platform — Interactive Prototype v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0E2A47; --navy-deep:#081C33; --navy-ink:#123A63;
+  --green:#12A45B; --green-dark:#0B7A42; --green-soft:#E6F6EE;
+  --bg:#F2F5F9; --card:#FFFFFF; --line:#E3E9F1;
+  --ink:#16283C; --mut:#5D7189; --faint:#94A6BB;
+  --red:#D64545; --red-soft:#FCEBEB; --amber:#D98A1F; --amber-soft:#FCF3E3;
+  --blue:#2D6CDF; --blue-soft:#E9F0FD; --purple:#7A4FD0; --purple-soft:#F1EBFB;
+  --r:12px; --sh:0 1px 2px rgba(14,42,71,.06),0 4px 14px rgba(14,42,71,.06);
+  --mono:'JetBrains Mono',monospace; --disp:'Sora',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--navy-deep);overflow:hidden;font-size:13px}
+button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:inherit}
+::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-thumb{background:#B9C6D6;border-radius:8px}
+
+/* ───── GLOBAL CHROME ───── */
+#chrome{position:fixed;inset:0 0 auto 0;height:58px;z-index:50;background:var(--navy-deep);display:flex;align-items:center;gap:14px;padding:0 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo{font-family:var(--disp);font-weight:800;font-size:20px;color:#fff;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.logo b{color:var(--green)}
+.logo .tag{font-family:'Inter';font-weight:500;font-size:9px;letter-spacing:2px;color:#8FA6BE;border-left:1px solid rgba(255,255,255,.2);padding-left:8px}
+#flownav{flex:1;display:flex;gap:6px;overflow-x:auto;padding:6px 2px;scrollbar-width:none}
+#flownav::-webkit-scrollbar{display:none}
+.fchip{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;color:#A9BCD1;font-size:11.5px;font-weight:500;background:rgba(255,255,255,.05);border:1px solid transparent;transition:.15s;white-space:nowrap}
+.fchip .n{font-family:var(--mono);font-size:9.5px;color:var(--green);opacity:.9}
+.fchip:hover{background:rgba(255,255,255,.12);color:#fff}
+.fchip.on{background:var(--green);color:#fff;border-color:var(--green)}
+.fchip.on .n{color:rgba(255,255,255,.85)}
+.arrows{display:flex;gap:6px}
+.arr{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;display:grid;place-items:center;transition:.15s}
+.arr:hover{background:var(--green)}
+#proto-badge{font-family:var(--mono);font-size:9.5px;color:#FBBF24;border:1px dashed #FBBF24;border-radius:6px;padding:4px 8px;white-space:nowrap}
+
+/* ───── H-SCROLL DECK ───── */
+#deck{position:absolute;inset:58px 0 0 0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth}
+.screen{flex:0 0 100vw;height:100%;scroll-snap-align:start;background:var(--bg);display:flex;flex-direction:column;position:relative}
+.screen-label{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;z-index:5;background:var(--navy-deep);color:#B9CBDE;font-family:var(--mono);font-size:9.5px;padding:5px 14px;border-radius:99px;letter-spacing:1px;opacity:.9;pointer-events:none}
+
+/* ───── APP FRAME (sidebar+topbar) ───── */
+.frame{display:flex;height:100%;overflow:hidden}
+.side{width:198px;flex-shrink:0;background:var(--navy);display:flex;flex-direction:column;padding:14px 10px;gap:2px;overflow-y:auto}
+.side .slogo{font-family:var(--disp);font-weight:800;font-size:17px;color:#fff;padding:2px 10px 14px}
+.side .slogo b{color:var(--green)}
+.sit{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:#A9BCD1;font-size:12px;font-weight:500;transition:.12s;width:100%;text-align:left}
+.sit:hover{background:rgba(255,255,255,.08);color:#fff}
+.sit.on{background:var(--green);color:#fff}
+.sit .ic{width:16px;text-align:center;font-size:13px}
+.sit .pill{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:99px;padding:1px 6px}
+.side .sec{font-size:9px;letter-spacing:1.5px;color:#5D7189;padding:12px 10px 4px;text-transform:uppercase}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:52px;flex-shrink:0;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 18px}
+.topbar h1{font-family:var(--disp);font-size:15.5px;font-weight:700}
+.topbar .sub{color:var(--mut);font-size:11.5px}
+.tsp{flex:1}
+.selbox{border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:11.5px;color:var(--mut);background:#fff;display:flex;gap:6px;align-items:center}
+.bell{position:relative;width:34px;height:34px;border-radius:9px;border:1px solid var(--line);display:grid;place-items:center;font-size:14px}
+.bell i{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-style:normal;font-size:8.5px;font-weight:700;border-radius:99px;padding:1px 5px}
+.avatar{width:32px;height:32px;border-radius:99px;background:var(--green);color:#fff;font-weight:700;font-size:11px;display:grid;place-items:center}
+.body{flex:1;overflow-y:auto;padding:16px 18px 44px;display:flex;flex-direction:column;gap:14px}
+
+/* ───── COMPONENTS ───── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px;box-shadow:var(--sh)}
+.kpi .l{font-size:10.5px;color:var(--mut);font-weight:600;letter-spacing:.3px;display:flex;justify-content:space-between}
+.kpi .v{font-family:var(--disp);font-size:23px;font-weight:700;margin-top:5px}
+.kpi .d{font-size:10.5px;margin-top:4px;font-weight:600}
+.up{color:var(--green)}.dn{color:var(--red)}.wr{color:var(--amber)}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}.g32{grid-template-columns:1.6fr 1fr}.g23{grid-template-columns:1fr 1.6fr}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.card>.hd{padding:12px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.card>.hd h3{font-size:12.5px;font-weight:700}
+.card>.hd .r{margin-left:auto;display:flex;gap:6px;align-items:center}
+.card>.bd{padding:14px 15px}
+.link{color:var(--blue);font-size:11px;font-weight:600}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);font-weight:600}
+td{padding:10px 14px;border-bottom:1px solid #EEF2F7;font-size:12px;vertical-align:middle}
+tr.click{cursor:pointer;transition:.1s}
+tr.click:hover{background:#F7FAFD}
+.mono{font-family:var(--mono);font-size:11px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;border-radius:99px;padding:3px 9px}
+.b-g{background:var(--green-soft);color:var(--green-dark)}.b-r{background:var(--red-soft);color:var(--red)}
+.b-a{background:var(--amber-soft);color:var(--amber)}.b-b{background:var(--blue-soft);color:var(--blue)}
+.b-p{background:var(--purple-soft);color:var(--purple)}.b-n{background:#EDF1F6;color:var(--mut)}
+.dot{width:6px;height:6px;border-radius:99px;background:currentColor}
+.bar{height:6px;border-radius:99px;background:#E8EDF4;overflow:hidden;min-width:60px}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--green)}
+.bar.b-red i{background:var(--red)}.bar.b-amb i{background:var(--amber)}.bar.b-blue i{background:var(--blue)}
+.btn{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:12px;border-radius:9px;padding:8px 14px;transition:.15s;border:1px solid transparent}
+.btn-p{background:var(--green);color:#fff}.btn-p:hover{background:var(--green-dark)}
+.btn-o{border-color:var(--line);color:var(--ink);background:#fff}.btn-o:hover{border-color:var(--green);color:var(--green-dark)}
+.btn-d{background:var(--navy);color:#fff}.btn-d:hover{background:var(--navy-ink)}
+.btn-sm{padding:5px 10px;font-size:11px;border-radius:7px}
+.tabs{display:flex;gap:2px;background:#EAEFF5;border-radius:9px;padding:3px;width:max-content}
+.tab{padding:6px 13px;font-size:11.5px;font-weight:600;color:var(--mut);border-radius:7px;transition:.12s}
+.tab.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(14,42,71,.12)}
+.donut{position:relative;width:120px;height:120px;border-radius:50%;flex-shrink:0}
+.donut::after{content:'';position:absolute;inset:16px;background:var(--card);border-radius:50%}
+.donut .cv{position:absolute;inset:0;display:grid;place-items:center;z-index:2;flex-direction:column;text-align:center}
+.donut .cv b{font-family:var(--disp);font-size:19px;display:block}
+.donut .cv span{font-size:9px;color:var(--mut)}
+.legend{display:flex;flex-direction:column;gap:7px;font-size:11.5px}
+.legend .li{display:flex;align-items:center;gap:8px}
+.legend .sw{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.legend .lv{margin-left:auto;font-weight:600;font-family:var(--mono);font-size:10.5px}
+.spark{display:flex;align-items:flex-end;gap:4px;height:64px}
+.spark i{flex:1;background:linear-gradient(180deg,var(--green),#7FD9AC);border-radius:4px 4px 0 0;min-width:8px;opacity:.85;transition:.2s}
+.spark i:hover{opacity:1;transform:scaleY(1.03)}
+.spark.blue i{background:linear-gradient(180deg,var(--blue),#93B8F5)}
+.hmini{font-size:10px;color:var(--faint);display:flex;justify-content:space-between;margin-top:6px}
+.chain{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding:4px 0}
+.cnode{flex:1;min-width:104px;text-align:center;position:relative;padding:10px 6px}
+.cnode:not(:last-child)::after{content:'→';position:absolute;right:-7px;top:26px;color:var(--green);font-weight:700;z-index:2}
+.cnode .ico{width:42px;height:42px;border-radius:12px;background:var(--green-soft);color:var(--green-dark);display:grid;place-items:center;margin:0 auto 7px;font-size:17px;border:1.5px solid #BFE8D2}
+.cnode.hot .ico{background:var(--green);color:#fff}
+.cnode b{font-size:10.5px;display:block}
+.cnode span{font-size:9.5px;color:var(--mut)}
+.cnode .tc{font-family:var(--mono);font-size:8.5px;color:var(--blue);margin-top:3px;display:block}
+.form-g{display:flex;flex-direction:column;gap:5px}
+.form-g label{font-size:10.5px;font-weight:600;color:var(--mut)}
+.form-g input,.form-g select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit;background:#fff}
+.form-g input:focus,.form-g select:focus{outline:2px solid var(--green-soft);border-color:var(--green)}
+.note{background:var(--blue-soft);border:1px solid #CCDCF9;color:#1E4FA8;font-size:11px;border-radius:9px;padding:9px 12px;line-height:1.5}
+.warnbox{background:var(--red-soft);border:1px solid #F2C7C7;color:#A33;font-size:11.5px;border-radius:9px;padding:10px 13px;line-height:1.55}
+.ai-tag{display:inline-flex;align-items:center;gap:5px;background:var(--purple-soft);color:var(--purple);font-size:9.5px;font-weight:700;border-radius:6px;padding:2px 7px;letter-spacing:.3px}
+.timeline{display:flex;flex-direction:column}
+.tl{display:flex;gap:12px;position:relative;padding-bottom:16px}
+.tl::before{content:'';position:absolute;left:7px;top:18px;bottom:0;width:2px;background:var(--line)}
+.tl:last-child::before{display:none}
+.tl .pt{width:16px;height:16px;border-radius:99px;background:#fff;border:4px solid var(--green);flex-shrink:0;margin-top:2px;z-index:1}
+.tl.pend .pt{border-color:#C6D2E0}
+.tl b{font-size:12px;display:block}
+.tl span{font-size:11px;color:var(--mut)}
+.tl .t{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+
+/* ───── MODAL & TOAST & DRAWER ───── */
+#modal-wrap{position:fixed;inset:0;background:rgba(8,28,51,.55);z-index:100;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+#modal-wrap.open{display:flex}
+#modal{background:#fff;border-radius:16px;width:min(560px,92vw);max-height:86vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,0,0,.35);animation:pop .18s ease}
+@keyframes pop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+#modal .mhd{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center}
+#modal .mhd h3{font-family:var(--disp);font-size:15px}
+#modal .mx{margin-left:auto;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--mut)}
+#modal .mx:hover{background:#F1F4F8}
+#modal .mbd{padding:18px 20px;display:flex;flex-direction:column;gap:13px}
+#toasts{position:fixed;bottom:46px;right:18px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--navy-deep);color:#fff;border-radius:11px;padding:11px 15px;font-size:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);display:flex;gap:9px;align-items:center;animation:tin .25s ease;max-width:340px}
+.toast b{color:#7FD9AC}
+@keyframes tin{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
+.qr{width:112px;height:112px;background:
+ conic-gradient(var(--navy) 25%,transparent 0 50%,var(--navy) 0 75%,transparent 0) 0 0/28px 28px,
+ repeating-linear-gradient(90deg,var(--navy) 0 7px,#fff 7px 14px);border:6px solid #fff;outline:2px solid var(--navy);border-radius:8px;image-rendering:pixelated}
+.suspend-banner{background:linear-gradient(90deg,#D64545,#B23333);color:#fff;padding:10px 16px;font-size:12px;font-weight:600;display:none;align-items:center;gap:10px}
+.suspend-banner.on{display:flex}
+.locked{opacity:.45;pointer-events:none;filter:grayscale(.6)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<!-- GLOBAL NAV -->
+<div id="chrome">
+  <div class="logo">S<b>TT</b><span class="tag">SMART TRACEABILITY<br>TECHNOLOGY</span></div>
+  <div id="flownav"></div>
+  <span id="proto-badge">PROTOTYPE v1.0 · DEMO DATA</span>
+  <div class="arrows"><button class="arr" onclick="nav(-1)">‹</button><button class="arr" onclick="nav(1)">›</button></div>
+</div>
+
+<div id="deck"></div>
+<div id="modal-wrap" onclick="if(event.target===this)closeModal()"><div id="modal"></div></div>
+<div id="toasts"></div>
+
+<script>
+/* ═══════════════ DEMO DATA ═══════════════ */
+const D = {
+ org:{name:"Chattogram Apparel Ltd.",type:"Facility Membership",plan:"$490/yr",tier:"Garment Factory",id:"ORG-BD-00412"},
+ wallets:[
+  {mat:"Organic Cotton",cert:"GOTS",bal:18450,unit:"kg",verified:16900,pend:1550,icon:"🌱"},
+  {mat:"Recycled Polyester",cert:"GRS",bal:9200,unit:"kg",verified:9200,pend:0,icon:"♻️"},
+  {mat:"Conventional Cotton",cert:"BCI",bal:24600,unit:"kg",verified:22100,pend:2500,icon:"🧵"},
+  {mat:"Elastane",cert:"—",bal:1150,unit:"kg",verified:1150,pend:0,icon:"🧶"}],
+ transfers:[
+  {id:"TRF-2418",from:"Sundarban Spinning Mills",to:"Chattogram Apparel Ltd.",mat:"Organic Cotton Yarn 30/1",qty:"4,200 kg",tc:"TC-08841",date:"Jul 08, 2026",st:"Completed"},
+  {id:"TRF-2417",from:"Chattogram Apparel Ltd.",to:"NordStyle GmbH (Buyer)",mat:"Finished Garments — PO-7731",qty:"58,000 pcs",tc:"TC-08833",date:"Jul 05, 2026",st:"Completed"},
+  {id:"TRF-2415",from:"GreenDye Processing",to:"Chattogram Apparel Ltd.",mat:"Dyed Fabric 160 GSM",qty:"6,850 kg",tc:"TC-08819",date:"Jul 02, 2026",st:"Completed"},
+  {id:"TRF-2411",from:"Delta Cotton Traders",to:"Sundarban Spinning Mills",mat:"Raw Organic Cotton",qty:"12,000 kg",tc:"TC-08790",date:"Jun 27, 2026",st:"Completed"}],
+ orders:[
+  {id:"ORD-260712-001",buyer:"NordStyle GmbH",style:"Men's Tee 160GSM 60/40",qty:"100,000 pcs",origin:"Chattogram, BD",dest:"Hamburg, DE",st:"In Transit",eta:"Jul 24, 2026",prog:72},
+  {id:"ORD-260705-004",buyer:"Maple & Co.",style:"Kids Hoodie Fleece",qty:"42,000 pcs",origin:"Dhaka, BD",dest:"Rotterdam, NL",st:"In Production",eta:"Aug 09, 2026",prog:38},
+  {id:"ORD-260628-002",buyer:"UrbanThread AB",style:"Women's Denim Jacket",qty:"18,500 pcs",origin:"Gazipur, BD",dest:"Gothenburg, SE",st:"Delivered",eta:"Jul 03, 2026",prog:100},
+  {id:"ORD-260620-007",buyer:"NordStyle GmbH",style:"Polo Pique 220GSM",qty:"64,000 pcs",origin:"Chattogram, BD",dest:"Hamburg, DE",st:"Exception",eta:"Jul 19, 2026",prog:55},
+  {id:"ORD-260615-003",buyer:"Costa Verde SL",style:"Linen Shirt SS27",qty:"27,000 pcs",origin:"Narayanganj, BD",dest:"Valencia, ES",st:"In Transit",eta:"Jul 21, 2026",prog:81}],
+ materials:[
+  {n:"Organic Cotton (Shankar-6)",cat:"Fiber",src:"Supplier + GOTS Cert",risk:"Low",comp:"Compliant",score:91},
+  {n:"Recycled Polyester Chips",cat:"Polymer",src:"Supplier + GRS Cert",risk:"Low",comp:"Compliant",score:88},
+  {n:"Reactive Dye RB-19",cat:"Chemical",src:"3rd-Party Data",risk:"High",comp:"At Risk",score:46},
+  {n:"Viscose (FSC)",cat:"Fiber",src:"Supplier + Doc",risk:"Medium",comp:"Compliant",score:72},
+  {n:"Elastane 40D",cat:"Polymer",src:"Supplier Declaration",risk:"Medium",comp:"Review",score:63}],
+ risks:[
+  {e:"Supplier: GreenDye Processing",t:"ESG",lv:"High",d:"Effluent treatment non-conformance flagged in audit",on:"Jul 10, 2026",st:"Open"},
+  {e:"Material: Reactive Dye RB-19",t:"Compliance",lv:"High",d:"REACH SVHC candidate list match — substitution required",on:"Jul 09, 2026",st:"Open"},
+  {e:"Facility: Unit-3 Sewing",t:"Operational",lv:"Medium",d:"Capacity vs output anomaly — possible unauthorized subcontracting",on:"Jul 08, 2026",st:"Investigating"},
+  {e:"Route: CGP → Hamburg",t:"Logistics",lv:"Medium",d:"Port congestion; ETA slip probability 64%",on:"Jul 07, 2026",st:"Monitoring"},
+  {e:"Supplier: Delta Cotton Traders",t:"Financial",lv:"Low",d:"Payment behaviour normal; credit watch removed",on:"Jul 04, 2026",st:"Resolved"}],
+ regs:[
+  {n:"EU DPP (ESPR 2024/1781)",sc:81,items:"34/42 controls",due:"2027 readiness",st:"On Track"},
+  {n:"CSRD / ESRS",sc:84,items:"61/73 controls",due:"FY2026 report",st:"On Track"},
+  {n:"CSDDD",sc:75,items:"27/36 controls",due:"2027",st:"Gap"},
+  {n:"EUDR",sc:88,items:"22/25 controls",due:"Active",st:"On Track"},
+  {n:"REACH",sc:90,items:"45/50 controls",due:"Active",st:"On Track"}],
+ tasks:[
+  {t:"Update Supplier ESG Questionnaire",reg:"CSRD",due:"Jul 22, 2026",own:"R. Sharma",st:"In Progress",p:60},
+  {t:"Substitute RB-19 dye — supplier plan",reg:"REACH",due:"Jul 25, 2026",own:"A. Khan",st:"In Progress",p:35},
+  {t:"EUDR Traceability Validation — cotton lots",reg:"EUDR",due:"Aug 05, 2026",own:"S. Lee",st:"Not Started",p:0},
+  {t:"CSDDD value-chain risk assessment",reg:"CSDDD",due:"Aug 12, 2026",own:"M. Johnson",st:"Not Started",p:0}],
+ verifs:[
+  {id:"VR-0912",type:"Social Compliance",target:"Unit-3 Sewing Facility",req:"NordStyle GmbH",auditor:"SGC Audit Team-BD",st:"In Progress",due:"Jul 18, 2026"},
+  {id:"VR-0907",type:"Material Verification",target:"Organic Cotton Lot #OC-2261",req:"Maple & Co.",auditor:"EcoLab Testing",st:"Report Submitted",due:"Jul 11, 2026"},
+  {id:"VR-0899",type:"Capacity Verification",target:"Sundarban Spinning Mills",req:"UrbanThread AB",auditor:"Pending Assignment",st:"Open for Bids",due:"Jul 28, 2026"}],
+ alerts:[
+  {t:"REACH SVHC match on Reactive Dye RB-19",c:"Compliance",sv:"Critical",on:"Jul 09, 08:32",st:"In Progress",who:"A. Khan"},
+  {t:"Unauthorized subcontracting anomaly — Unit-3",c:"Risk",sv:"High",on:"Jul 08, 07:15",st:"New",who:"—"},
+  {t:"ORD-260620-007 milestone overdue: Ex-Factory",c:"Operational",sv:"High",on:"Jul 08, 06:40",st:"In Progress",who:"M. Johnson"},
+  {t:"Water usage above monthly target (Unit-2)",c:"Sustainability",sv:"Medium",on:"Jul 07, 16:25",st:"Acknowledged",who:"J. Patel"},
+  {t:"Certificate expiring in 30 days: GOTS #4471",c:"Compliance",sv:"Medium",on:"Jul 06, 09:00",st:"Resolved",who:"S. Lee"}]
+};
+let tcCounter=8842, trfCounter=2419, vrCounter=913, expired=false;
+
+/* ═══════════════ HELPERS ═══════════════ */
+const $=s=>document.querySelector(s);
+const badge=(txt,cls)=>`<span class="badge ${cls}"><span class="dot"></span>${txt}</span>`;
+const stBadge=s=>({Completed:"b-g",Delivered:"b-g","On Track":"b-g",Resolved:"b-g",Compliant:"b-g","In Transit":"b-b","In Progress":"b-b","Report Submitted":"b-b",Monitoring:"b-b","In Production":"b-a",Investigating:"b-a",Review:"b-a",Acknowledged:"b-a",Gap:"b-a","Not Started":"b-n","Open for Bids":"b-p",Exception:"b-r",Open:"b-r",New:"b-r","At Risk":"b-r",Critical:"b-r",High:"b-r",Medium:"b-a",Low:"b-g"}[s]||"b-n");
+const bar=(p,c="")=>`<div style="display:flex;align-items:center;gap:8px"><div class="bar ${c}" style="flex:1"><i style="width:${p}%"></i></div><span class="mono" style="color:var(--mut)">${p}%</span></div>`;
+const kpi=(l,v,d,cls="up",ic="")=>`<div class="kpi"><div class="l">${l}<span>${ic}</span></div><div class="v">${v}</div><div class="d ${cls}">${d}</div></div>`;
+const donut=(grad,center,sub)=>`<div class="donut" style="background:conic-gradient(${grad})"><div class="cv"><div><b>${center}</b><span>${sub}</span></div></div></div>`;
+const spark=(vals,cls="")=>`<div class="spark ${cls}">${vals.map(v=>`<i style="height:${v}%"></i>`).join("")}</div>`;
+const toast=(html)=>{const t=document.createElement("div");t.className="toast";t.innerHTML="✅ "+html;$("#toasts").append(t);setTimeout(()=>{t.style.opacity=0;t.style.transition=".4s";setTimeout(()=>t.remove(),400)},4200)};
+const openModal=h=>{$("#modal").innerHTML=h;$("#modal-wrap").classList.add("open")};
+const closeModal=()=>$("#modal-wrap").classList.remove("open");
+const mhd=t=>`<div class="mhd"><h3>${t}</h3><button class="mx" onclick="closeModal()">✕</button></div>`;
+
+function frame(active, title, sub, bodyHTML, extraTop=""){
+ const items=[["dash","🏠","Dashboard"],["orders","📦","Orders"],["materials","🧪","Materials"],["wallet","👛","Material Wallet"],["chainmap","🕸️","Supply Chain"],["risk","🛡️","Risk Hub",18],["compliance","📋","Compliance"],["sustain","🌿","Sustainability"],["verify","🔎","Verification"],["reports","📊","Reports"],["alerts","🔔","Alerts",5],["billing","💳","Membership"]];
+ return `<div class="frame">
+  <nav class="side"><div class="slogo">S<b>TT</b></div>
+   <div class="sec">Operate</div>
+   ${items.slice(0,5).map(i=>`<button class="sit ${i[0]===active?"on":""}" onclick="go('${i[0]}')"><span class="ic">${i[1]}</span>${i[2]}${i[3]?`<span class="pill">${i[3]}</span>`:""}</button>`).join("")}
+   <div class="sec">Assure</div>
+   ${items.slice(5,9).map(i=>`<button class="sit ${i[0]===active?"on":""}" onclick="go('${i[0]}')"><span class="ic">${i[1]}</span>${i[2]}${i[3]?`<span class="pill">${i[3]}</span>`:""}</button>`).join("")}
+   <div class="sec">Decide</div>
+   ${items.slice(9).map(i=>`<button class="sit ${i[0]===active?"on":""}" onclick="go('${i[0]}')"><span class="ic">${i[1]}</span>${i[2]}${i[3]?`<span class="pill">${i[3]}</span>`:""}</button>`).join("")}
+  </nav>
+  <div class="main">
+   <div class="suspend-banner ${expired?"on":""}" data-suspend>⛔ Membership expired — platform access, TC issuance, Material Wallet, DPP generation & verification requests are suspended. <button class="btn btn-sm" style="background:#fff;color:var(--red);margin-left:auto" onclick="toggleExpiry()">Renew now</button></div>
+   <div class="topbar"><h1>${title}</h1><span class="sub">${sub}</span><div class="tsp"></div>
+    ${extraTop}<div class="selbox">📅 Jul 06 – Jul 12, 2026</div>
+    <button class="bell" onclick="go('alerts')">🔔<i>5</i></button><div class="avatar">CA</div></div>
+   <div class="body ${expired?"locked":""}" data-lockable>${bodyHTML}</div>
+  </div></div>`;
+}
+
+/* ═══════════════ SCREENS ═══════════════ */
+const SCREENS=[
+
+/* 01 LOGIN */
+{id:"login",nav:"Login",label:"SCREEN 01 · AUTH — SIGN IN / SSO / MFA",render:()=>`
+ <div style="height:100%;display:grid;grid-template-columns:1.1fr 1fr">
+  <div style="background:linear-gradient(160deg,var(--navy-deep),var(--navy) 60%,#0F3B2E);color:#fff;padding:52px;display:flex;flex-direction:column;justify-content:space-between">
+   <div class="logo" style="font-size:26px">S<b>TT</b><span class="tag">SMART TRACEABILITY<br>TECHNOLOGY</span></div>
+   <div>
+    <h1 style="font-family:var(--disp);font-size:34px;line-height:1.2;max-width:420px">One Platform.<br>Complete Transparency.<br><span style="color:var(--green)">From Source to Consumer.</span></h1>
+    <p style="color:#A9BCD1;margin-top:14px;max-width:400px;font-size:13px;line-height:1.6">End-to-end supply chain visibility, verified data, Digital Product Passports and compliance intelligence for the textile, apparel & footwear industry.</p>
+    <div style="display:flex;gap:22px;margin-top:26px">
+      ${[["500+","Factories"],["25+","Countries"],["1M+","Certificates"],["99.9%","Uptime"]].map(x=>`<div><div style="font-family:var(--disp);font-size:21px;font-weight:700;color:var(--green)">${x[0]}</div><div style="font-size:10px;color:#8FA6BE;letter-spacing:.5px">${x[1]}</div></div>`).join("")}
+    </div>
+   </div>
+   <div style="font-size:10px;color:#5D7189">Powered by SGC Global Assurance · Advancing Trust. Enabling Sustainability.</div>
+  </div>
+  <div style="display:grid;place-items:center;background:var(--bg)">
+   <div class="card" style="width:min(360px,86%);padding:26px">
+    <h2 style="font-family:var(--disp);font-size:19px">Sign in to STT</h2>
+    <p style="color:var(--mut);font-size:11.5px;margin:5px 0 18px">Enterprise access · MFA enforced</p>
+    <div style="display:flex;flex-direction:column;gap:12px">
+     <div class="form-g"><label>Work email</label><input value="ops@chattogram-apparel.com"></div>
+     <div class="form-g"><label>Password</label><input type="password" value="••••••••••"></div>
+     <button class="btn btn-p" style="justify-content:center" onclick="toast('Signed in as <b>Chattogram Apparel Ltd.</b> (Facility Membership)');go('dash')">Sign in →</button>
+     <button class="btn btn-o" style="justify-content:center" onclick="toast('SSO redirect simulated (SAML/OIDC)')">🔐 Continue with company SSO</button>
+     <div class="note">🛡️ Demo roles: this prototype signs you in as a <b>Garment Factory (Facility Membership)</b>. Buyer, auditor & admin views are represented across the screens.</div>
+    </div>
+   </div>
+  </div>
+ </div>`},
+
+/* 02 ONBOARDING */
+{id:"onboard",nav:"Onboarding",label:"SCREEN 02 · GUIDED ONBOARDING — 5 PHASES · 7–21 DAYS",render:()=>frame("dash","Onboarding Journey","Phase 3 of 5 · Day 9 of target 21",`
+ <div class="card"><div class="bd">
+  <div class="chain">
+   ${[["📝","Registration","Complete","hot"],["🕸️","Supply Chain Mapping","Complete","hot"],["👛","Wallet Activation","In Progress","hot"],["📜","TC Activation","Pending",""],["🚀","Live Operations","Pending",""]].map((p,i)=>`
+   <div class="cnode ${p[3]}"><div class="ico">${p[0]}</div><b>Phase ${i+1}</b><span>${p[1]}</span><span class="tc">${p[2]}</span></div>`).join("")}
+  </div>
+ </div></div>
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Phase 3 — Material Wallet Activation</h3><div class="r">${badge("In Progress","b-b")}</div></div><div class="bd">
+   <div class="timeline">
+    ${[["Cotton Wallet Activation","GOTS organic cotton wallet configured · opening balance verified against TC-08790","Jul 08 · Done",0],
+       ["Polyester Wallet Activation","GRS recycled polyester wallet configured","Jul 09 · Done",0],
+       ["Recycled Material Wallet","Awaiting GRS scope certificate upload from supplier","Due Jul 14",1],
+       ["Initial Material Balance Configuration","Mass-balance yield factors per process step (knitting 97.8%, dyeing 96.1%)","Due Jul 15",1]]
+     .map(t=>`<div class="tl ${t[3]?"pend":""}"><div class="pt"></div><div><b>${t[0]}</b><span>${t[1]}</span><div class="t">${t[2]}</div></div></div>`).join("")}
+   </div>
+   <button class="btn btn-p" onclick="toast('GRS scope certificate uploaded → sent to <b>AI document extraction</b> queue')">⬆ Upload GRS certificate</button>
+  </div></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Registration Summary</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:9px;font-size:12px">
+    ${[["Organization","Chattogram Apparel Ltd."],["Membership","Facility · $490/yr"],["Onboarding fee","$500 · Paid ✓"],["Tier-1 suppliers mapped","14"],["Tier-2 suppliers mapped","31"],["Tier-3 suppliers mapped","9"],["Facilities declared","6 (sewing ×3, wash, print, pack)"],["Users configured","12 across 5 roles"]].map(r=>`<div style="display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:7px"><span style="color:var(--mut)">${r[0]}</span><b>${r[1]}</b></div>`).join("")}
+   </div></div>
+   <div class="note">🎓 <b>Dedicated onboarding support:</b> Your success manager (SGC Dhaka) has scheduled Mass-Balance training for Jul 14, 10:00 BST.</div>
+  </div>
+ </div>`)},
+
+/* 03 DASHBOARD */
+{id:"dash",nav:"Dashboard",label:"SCREEN 03 · EXECUTIVE DASHBOARD — INSIGHTS & ANALYTICS",render:()=>frame("dash","Executive Overview","All business units",`
+ <div class="kpis">
+  ${kpi("ON-TIME DELIVERY","92.4%","▲ 5.2% vs last 30 days","up","✅")}
+  ${kpi("TOTAL ORDERS","1,248","▲ 8.1% vs last 30 days","up","📦")}
+  ${kpi("HIGH RISK ITEMS","134","▼ 12.5% vs last 30 days","up","⚠️")}
+  ${kpi("TOTAL SPEND","$56.2M","▲ 6.3% vs last 30 days","wr","💵")}
+  ${kpi("CO₂e EMISSIONS (t)","125,430","▼ 6.2% vs last 30 days","up","🌿")}
+ </div>
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Orders Over Time</h3><div class="r"><span class="badge b-b">Weekly</span></div></div><div class="bd">
+   ${spark([38,45,42,58,52,66,61,74,70,82,78,90,86,95],"blue")}
+   <div class="hmini"><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span></div>
+  </div></div>
+  <div class="card"><div class="hd"><h3>Risk Score Trend</h3><div class="r"><span class="badge b-g">Improving</span></div></div><div class="bd">
+   ${spark([88,84,86,79,75,77,70,66,68,61,58,54])}
+   <div class="hmini"><span>High 88</span><span>Now 54</span></div>
+  </div></div>
+ </div>
+ <div class="grid g3">
+  <div class="card"><div class="hd"><h3>Spend by Category</h3></div><div class="bd" style="display:flex;gap:16px;align-items:center">
+   ${donut("var(--green) 0 34%, var(--blue) 34% 58%, var(--amber) 58% 76%, var(--purple) 76% 88%, #C6D2E0 88% 100%","$56.2M","total spend")}
+   <div class="legend">
+    ${[["Fabrics","34%","var(--green)"],["Yarn & Fiber","24%","var(--blue)"],["Chemicals","18%","var(--amber)"],["Trims","12%","var(--purple)"],["Other","12%","#C6D2E0"]].map(l=>`<div class="li"><span class="sw" style="background:${l[2]}"></span>${l[0]}<span class="lv">${l[1]}</span></div>`).join("")}
+   </div>
+  </div></div>
+  <div class="card"><div class="hd"><h3>Top Suppliers by Score</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:10px">
+   ${[["Sundarban Spinning",96],["GreenTex Fabrics",92],["Delta Cotton Traders",89],["EcoTrims BD",87],["GreenDye Processing",64]].map(s=>`<div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px"><b>${s[0]}</b><span class="mono">${s[1]}</span></div>${`<div class="bar ${s[1]<70?"b-amb":""}"><i style="width:${s[1]}%"></i></div>`}</div>`).join("")}
+  </div></div>
+  <div class="card"><div class="hd"><h3>Sustainability Summary</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:9px;font-size:12px">
+    ${[["Renewable energy","46%","▲ 5%"],["Water usage (m³)","98,765","▼ 7.1%"],["Waste diverted","72%","▲ 6%"],["Verified claims","8,342","▲ 4%"]].map(r=>`<div style="display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:7px"><span style="color:var(--mut)">${r[0]}</span><span><b>${r[1]}</b> <span class="up" style="font-size:10.5px">${r[2]}</span></span></div>`).join("")}
+  </div></div>
+ </div>
+ <div class="card"><div class="bd" style="display:flex;gap:10px;align-items:center">
+  <span class="ai-tag">✦ AI INSIGHT OF THE WEEK</span>
+  <span style="font-size:12.5px">Improved supplier performance and proactive risk mitigation contributed to a <b>5.2% increase in on-time delivery</b>. Substituting dye RB-19 would remove <b>2 of your 3 critical compliance risks</b>.</span>
+  <button class="btn btn-o btn-sm" style="margin-left:auto" onclick="go('risk')">Review risks →</button>
+ </div></div>`)},
+
+/* 04 ORDERS */
+{id:"orders",nav:"Orders",label:"SCREEN 04 · ORDER INTELLIGENCE — TRACKING · MILESTONES · ETA",render:()=>frame("orders","Order Intelligence","Real-time visibility · source to destination",`
+ <div class="kpis">
+  ${kpi("TOTAL ORDERS","1,248","251,500 pcs active","up","📦")}${kpi("IN TRANSIT","876","across 14 routes","up","🚢")}${kpi("ON TIME","92.4%","▲ 5.2%","up","⏱️")}${kpi("EXCEPTIONS","28","2 critical","dn","🚨")}
+ </div>
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Active Orders</h3><div class="r"><div class="tabs"><button class="tab on">All</button><button class="tab" onclick="toast('Filter simulated: In Transit')">In Transit</button><button class="tab" onclick="toast('Filter simulated: Exceptions')">Exceptions</button></div></div></div>
+   <table><thead><tr><th>Order</th><th>Buyer / Style</th><th>Route</th><th>Status</th><th>ETA</th><th style="width:130px">Progress</th></tr></thead><tbody>
+   ${D.orders.map(o=>`<tr class="click" onclick="orderModal('${o.id}')"><td class="mono">${o.id}</td><td><b>${o.buyer}</b><br><span style="color:var(--mut);font-size:11px">${o.style} · ${o.qty}</span></td><td style="font-size:11px">${o.origin} →<br>${o.dest}</td><td>${badge(o.st,stBadge(o.st))}</td><td class="mono">${o.eta}</td><td>${bar(o.prog,o.st==="Exception"?"b-red":o.prog===100?"":"b-blue")}</td></tr>`).join("")}
+   </tbody></table></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Order Status</h3></div><div class="bd" style="display:flex;gap:14px;align-items:center">
+    ${donut("var(--green) 0 28%, var(--blue) 28% 98%, var(--red) 98% 100%","1,248","orders")}
+    <div class="legend">${[["Delivered · 352","28%","var(--green)"],["In Transit · 876","70%","var(--blue)"],["Exception · 28","2%","var(--red)"]].map(l=>`<div class="li"><span class="sw" style="background:${l[2]}"></span>${l[0]}<span class="lv">${l[1]}</span></div>`).join("")}</div>
+   </div></div>
+   <div class="card"><div class="hd"><h3>From Order to Impact</h3></div><div class="bd">
+    <div class="timeline">${[["Order Created","PO captured & validated",0],["In Transit","Real-time tracking across the journey",0],["Monitored","Milestones tracked · exceptions detected",0],["Delivered","On time. In full. As promised.",1],["Insights","Performance analyzed · continuous improvement",1]].map(t=>`<div class="tl ${t[2]?"pend":""}"><div class="pt"></div><div><b>${t[0]}</b><span>${t[1]}</span></div></div>`).join("")}</div>
+   </div></div>
+  </div>
+ </div>`)},
+
+/* 05 MATERIALS / AI */
+{id:"materials",nav:"AI Materials",label:"SCREEN 05 · AI MATERIAL INTELLIGENCE — IDENTIFY · ASSESS · VERIFY",render:()=>frame("materials","AI Material Intelligence","Understand every material. Prove every claim.",`
+ <div class="kpis">
+  ${kpi("TOTAL MATERIALS","12,458","across 41 suppliers","up","🧪")}${kpi("HIGH RISK","246","▼ 9% after mitigations","up","⚠️")}${kpi("VERIFIED","9,876","79% of portfolio","up","✅")}${kpi("CLAIMS VERIFIED","8,342","67% · AI + human review","up","🌿")}
+ </div>
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Material Intelligence List</h3><div class="r"><button class="btn btn-p btn-sm" onclick="aiCalcModal()">✦ AI Requirement Calculator</button></div></div>
+   <table><thead><tr><th>Material</th><th>Category</th><th>Source</th><th>Risk</th><th>Compliance</th><th style="width:120px">Score</th></tr></thead><tbody>
+   ${D.materials.map(m=>`<tr class="click" onclick="toast('Material drill-down simulated: <b>${m.n}</b> — spec, certificates, regulation map (DPP/REACH/EUDR)')"><td><b>${m.n}</b></td><td>${m.cat}</td><td style="font-size:11px;color:var(--mut)">${m.src}</td><td>${badge(m.risk,stBadge(m.risk))}</td><td>${badge(m.comp,stBadge(m.comp))}</td><td>${bar(m.score,m.score<50?"b-red":m.score<75?"b-amb":"")}</td></tr>`).join("")}
+   </tbody></table></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>AI Document Extraction</h3><span class="ai-tag" style="margin-left:auto">✦ CLAUDE-POWERED</span></div><div class="bd" style="display:flex;flex-direction:column;gap:10px">
+    <div style="border:1.5px dashed #BCC9D9;border-radius:10px;padding:18px;text-align:center;color:var(--mut);font-size:11.5px">📄 Drop supplier certificate / invoice / lab report<br><span style="font-size:10px">PDF · JPG · up to 25MB</span></div>
+    <button class="btn btn-d" style="justify-content:center" onclick="extractModal()">Simulate extraction: GOTS_cert_4471.pdf</button>
+    <div class="note">Fields with confidence &lt; 90% are routed to the <b>human review queue</b>. Every extraction stores source doc + confidence in the audit trail.</div>
+   </div></div>
+   <div class="card"><div class="hd"><h3>Sustainability Verification</h3></div><div class="bd" style="display:flex;gap:14px;align-items:center">
+    ${donut("var(--green) 0 67%, var(--amber) 67% 90%, #C6D2E0 90% 100%","67%","verified")}
+    <div class="legend">${[["Verified · 8,342","67%","var(--green)"],["In Progress · 2,893","23%","var(--amber)"],["Unverified · 1,223","10%","#C6D2E0"]].map(l=>`<div class="li"><span class="sw" style="background:${l[2]}"></span>${l[0]}<span class="lv">${l[1]}</span></div>`).join("")}</div>
+   </div></div>
+  </div>
+ </div>`)},
+
+/* 06 WALLET + TC */
+{id:"wallet",nav:"Wallet & TC",label:"SCREEN 06 · MATERIAL WALLET · MASS BALANCE · TRANSACTION CERTIFICATES",render:()=>frame("wallet","Material Wallet","Mass-balance enforced · every transfer certified",`
+ <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+  ${D.wallets.map((w,i)=>`<div class="card"><div class="bd">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:20px">${w.icon}</span>${badge(w.cert,"b-b")}</div>
+    <div style="font-size:11px;color:var(--mut);margin-top:8px">${w.mat}</div>
+    <div style="font-family:var(--disp);font-size:21px;font-weight:700" data-bal="${i}">${w.bal.toLocaleString()} <span style="font-size:11px;color:var(--mut)">${w.unit}</span></div>
+    <div style="font-size:10.5px;color:var(--mut);margin-top:5px">Verified ${w.verified.toLocaleString()} · Pending ${w.pend.toLocaleString()}</div>
+  </div></div>`).join("")}
+ </div>
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Recent Transfers & Transaction Certificates</h3><div class="r"><button class="btn btn-p btn-sm" onclick="transferModal()">＋ New Material Transfer</button></div></div>
+   <table><thead><tr><th>Transfer</th><th>From → To</th><th>Material</th><th>Qty</th><th>TC</th><th>Status</th></tr></thead><tbody id="trf-body">
+   ${D.transfers.map(t=>trfRow(t)).join("")}
+   </tbody></table></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Mass Balance — Organic Cotton</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:10px;font-size:12px">
+    ${[["Verified inputs (TC-backed)","16,900 kg"],["Process yield (spin+knit+dye)","× 91.4%"],["Max certifiable output","15,447 kg"],["Certified output to date","12,180 kg"]].map(r=>`<div style="display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:7px"><span style="color:var(--mut)">${r[0]}</span><b class="mono">${r[1]}</b></div>`).join("")}
+    <div class="bar"><i style="width:79%"></i></div>
+    <div class="note">🔒 <b>Invariant enforced:</b> certified output can never exceed verified input × yield. Attempted over-issuance is rejected at the ledger layer.</div>
+   </div></div>
+   <div class="warnbox">⚠️ <b>Ledger integrity:</b> all transfers below are hash-chained &amp; digitally signed. Try a transfer larger than the wallet balance — it will be <b>rejected</b>.</div>
+  </div>
+ </div>`)},
+
+/* 07 SUPPLY CHAIN MAP */
+{id:"chainmap",nav:"Chain Map",label:"SCREEN 07 · SUPPLY CHAIN DECLARATION — TIER 1→6 · SUBCONTRACT DETECTION",render:()=>frame("chainmap","Supply Chain Declaration","100% transparency · raw material to finished product",`
+ <div class="card"><div class="hd"><h3>Traceability Chain — PO-7731 (NordStyle Men's Tee)</h3><div class="r">${badge("Fully Declared","b-g")}</div></div><div class="bd">
+  <div class="chain">
+   ${[["🌱","Tier 6 · Raw Material","Delta Cotton Traders · Gujarat, IN","TC-08790"],["🧵","Tier 5 · Spinning","Sundarban Spinning Mills","TC-08841"],["🪡","Tier 4 · Knitting","KnitPro Fabrics BD","TC-08802"],["💧","Tier 3 · Dyeing","GreenDye Processing","TC-08819"],["🏭","Tier 2 · Fabric Supply","GreenTex Fabrics","TC-08825"],["👕","Tier 1 · Garment","Chattogram Apparel Ltd.","TC-08833"],["🛍️","Brand / Retailer","NordStyle GmbH · Hamburg","DPP ✓"]]
+   .map((n,i)=>`<div class="cnode ${i===5?"hot":""}"><div class="ico">${n[0]}</div><b>${n[1]}</b><span>${n[2]}</span><span class="tc">${n[3]}</span></div>`).join("")}
+  </div>
+ </div></div>
+ <div class="grid g2">
+  <div class="card"><div class="hd"><h3>Declared Facilities (yours)</h3><div class="r"><button class="btn btn-o btn-sm" onclick="toast('Facility declaration form simulated — process, location, capacity, machinery')">＋ Declare facility</button></div></div>
+   <table><thead><tr><th>Facility</th><th>Process</th><th>Location</th><th>Status</th></tr></thead><tbody>
+   ${[["Unit-1 Sewing","Garment Assembly","Chattogram EPZ","Verified"],["Unit-2 Sewing","Garment Assembly","Chattogram EPZ","Verified"],["Unit-3 Sewing","Garment Assembly","Karnaphuli","Under Review"],["Wash House A","Washing / Finishing","Chattogram","Verified"],["Print Shop","Printing","Chattogram","Verified"],["Pack & Logistics","Packing","Port Area","Verified"]].map(f=>`<tr><td><b>${f[0]}</b></td><td>${f[1]}</td><td>${f[2]}</td><td>${badge(f[3],f[3]==="Verified"?"b-g":"b-a")}</td></tr>`).join("")}
+   </tbody></table></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Unauthorized Subcontracting Detection</h3><span class="ai-tag" style="margin-left:auto">✦ AI ANOMALY ENGINE</span></div><div class="bd" style="display:flex;flex-direction:column;gap:10px">
+    <div class="warnbox">🚩 <b>Anomaly flagged — Unit-3 Sewing:</b> declared capacity 6,000 pcs/day but PO-7731 output logged at 9,400 pcs/day for 4 consecutive days. Geo-tagged scans show 2 unknown pickup points.</div>
+    <div style="display:flex;gap:8px"><button class="btn btn-p btn-sm" onclick="toast('Verification request auto-drafted → <b>Verification Marketplace</b> (Physical Verification, Unit-3)');">Request physical verification</button><button class="btn btn-o btn-sm" onclick="toast('Marked for internal investigation · risk score updated')">Investigate internally</button></div>
+   </div></div>
+   <div class="card"><div class="hd"><h3>Tier Coverage</h3></div><div class="bd" style="display:flex;gap:14px;align-items:center">
+    ${donut("var(--green) 0 78%, var(--amber) 78% 93%, #C6D2E0 93% 100%","78%","fully mapped")}
+    <div class="legend">${[["Declared & verified","78%","var(--green)"],["Declared, unverified","15%","var(--amber)"],["Unknown (Tier 4+)","7%","#C6D2E0"]].map(l=>`<div class="li"><span class="sw" style="background:${l[2]}"></span>${l[0]}<span class="lv">${l[1]}</span></div>`).join("")}</div>
+   </div></div>
+  </div>
+ </div>`)},
+
+/* 08 RISK HUB */
+{id:"risk",nav:"Risk Hub",label:"SCREEN 08 · RISK HUB — IDENTIFY · ASSESS · MONITOR · MITIGATE",render:()=>frame("risk","Risk Hub","Multi-dimensional risk intelligence",`
+ <div class="kpis">
+  ${kpi("OVERALL RISK SCORE","68","High · trending down","wr","🛡️")}${kpi("HIGH RISK ITEMS","134","18 critical alerts","dn","🔴")}${kpi("AT RISK","312","watchlist","wr","🟠")}${kpi("MONITORED ENTITIES","5,842","suppliers · materials · routes","up","📡")}
+ </div>
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Top Risk Alerts</h3><div class="r"><div class="tabs"><button class="tab on">All</button><button class="tab" onclick="toast('Filtered: ESG')">ESG</button><button class="tab" onclick="toast('Filtered: Compliance')">Compliance</button></div></div></div>
+   <table><thead><tr><th>Entity</th><th>Type</th><th>Level</th><th>Description</th><th>Status</th></tr></thead><tbody>
+   ${D.risks.map((r,i)=>`<tr class="click" onclick="riskModal(${i})"><td><b>${r.e}</b><br><span class="mono" style="color:var(--faint)">${r.on}</span></td><td>${r.t}</td><td>${badge(r.lv,stBadge(r.lv))}</td><td style="font-size:11.5px;max-width:260px">${r.d}</td><td>${badge(r.st,stBadge(r.st))}</td></tr>`).join("")}
+   </tbody></table></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Risk by Category</h3></div><div class="bd" style="display:flex;gap:14px;align-items:center">
+    ${donut("var(--red) 0 28%, var(--amber) 28% 53%, var(--blue) 53% 73%, var(--green) 73% 88%, var(--purple) 88% 95%, #C6D2E0 95% 100%","68","risk score")}
+    <div class="legend">${[["Financial","28%","var(--red)"],["Operational","25%","var(--amber)"],["Supply Chain","20%","var(--blue)"],["ESG","15%","var(--green)"],["Compliance","7%","var(--purple)"],["Cyber","5%","#C6D2E0"]].map(l=>`<div class="li"><span class="sw" style="background:${l[2]}"></span>${l[0]}<span class="lv">${l[1]}</span></div>`).join("")}</div>
+   </div></div>
+   <div class="card"><div class="hd"><h3>Risk Management Process</h3></div><div class="bd">
+    <div class="timeline">${["Identify — scan internal & external signals","Assess — AI scores likelihood & impact (SHAP-explainable)","Prioritize — focus on what matters","Mitigate — assign owners, track actions","Monitor — continuous watch","Report — learn & improve"].map((s,i)=>`<div class="tl ${i>3?"pend":""}"><div class="pt"></div><div><b>${i+1}. ${s.split(" — ")[0]}</b><span>${s.split(" — ")[1]}</span></div></div>`).join("")}</div>
+   </div></div>
+  </div>
+ </div>`)},
+
+/* 09 COMPLIANCE */
+{id:"compliance",nav:"Compliance",label:"SCREEN 09 · COMPLIANCE COMMAND CENTER — AUDIT-READY, ALWAYS",render:()=>frame("compliance","Compliance Command Center","Centralize. Automate. Assure.",`
+ <div class="kpis">
+  ${kpi("OVERALL SCORE","92%","▲ 8% vs last 30 days","up","🏆")}${kpi("REQUIREMENTS","1,248","1,143 compliant · 105 gap","up","📋")}${kpi("OVERDUE","18","require attention","dn","⏰")}${kpi("UPCOMING (30D)","27","deadlines","wr","📅")}${kpi("OPEN INCIDENTS","7","high priority","dn","🚨")}
+ </div>
+ <div class="grid g32">
+  <div>
+   <div class="card"><div class="hd"><h3>Compliance by Regulation</h3><div class="r"><span class="link" onclick="toast('Regulation library opened — 50+ frameworks with control mapping')">Open regulation library →</span></div></div>
+    <table><thead><tr><th>Regulation</th><th style="width:170px">Score</th><th>Controls</th><th>Horizon</th><th>Status</th></tr></thead><tbody>
+    ${D.regs.map(r=>`<tr class="click" onclick="toast('Drill-down simulated: <b>${r.n}</b> — control list, evidence vault, gap actions')"><td><b>${r.n}</b></td><td>${bar(r.sc,r.sc<80?"b-amb":"")}</td><td class="mono">${r.items}</td><td>${r.due}</td><td>${badge(r.st,stBadge(r.st))}</td></tr>`).join("")}
+    </tbody></table></div>
+   <div class="card" style="margin-top:14px"><div class="hd"><h3>Upcoming Compliance Tasks</h3><div class="r"><button class="btn btn-o btn-sm" onclick="toast('Workflow builder simulated — task, approver chain, reminder & escalation rules')">＋ New workflow</button></div></div>
+    <table><thead><tr><th>Task</th><th>Regulation</th><th>Due</th><th>Owner</th><th>Status</th><th style="width:120px">Progress</th></tr></thead><tbody>
+    ${D.tasks.map(t=>`<tr class="click" onclick="toast('Task detail simulated: <b>${t.t}</b> — evidence checklist + approval chain')"><td><b>${t.t}</b></td><td>${t.reg}</td><td class="mono">${t.due}</td><td>${t.own}</td><td>${badge(t.st,stBadge(t.st))}</td><td>${bar(t.p,"b-blue")}</td></tr>`).join("")}
+    </tbody></table></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Evidence Vault</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:9px;font-size:12px">
+    ${[["Certificates on file","1,204","✓ hash-anchored"],["Audit reports","318","✓ e-signed"],["Test reports (labs)","422","✓ verified"],["Policies & training logs","96","current"]].map(r=>`<div style="display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:7px"><span style="color:var(--mut)">${r[0]}</span><span><b>${r[1]}</b> <span style="color:var(--green);font-size:10px">${r[2]}</span></span></div>`).join("")}
+    <button class="btn btn-d btn-sm" style="justify-content:center" onclick="toast('One-click <b>audit pack</b> generated — trails, evidence & status exported (PDF/ZIP)')">⬇ Generate audit pack</button>
+   </div></div>
+   <div class="note">🔍 <b>Assurance mode:</b> every control links to source evidence with timestamp + signer. Auditors get scoped read-only access.</div>
+  </div>
+ </div>`)},
+
+/* 10 SUSTAINABILITY */
+{id:"sustain",nav:"Sustainability",label:"SCREEN 10 · SUSTAINABILITY INTELLIGENCE — SCOPE 1/2/3 · GRI · CSRD",render:()=>frame("sustain","Sustainability Intelligence","Measure. Monitor. Improve. Sustain.",`
+ <div class="kpis">
+  ${kpi("SUSTAINABILITY SCORE","78","Good · ▲ 6 pts","up","🌿")}${kpi("TOTAL CO₂e (t)","125,430","▼ 6.3% vs last 30 days","up","☁️")}${kpi("RENEWABLE ENERGY","46%","▲ 5%","up","⚡")}${kpi("WATER USAGE (m³)","98,765","▼ 7.1%","up","💧")}${kpi("WASTE DIVERTED","72%","▲ 6%","up","♻️")}
+ </div>
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Top Sustainability Priorities</h3><div class="r"><button class="btn btn-o btn-sm" onclick="toast('Science-based target wizard simulated (SBTi-aligned)')">＋ Set target</button></div></div>
+   <table><thead><tr><th>Priority</th><th>Target</th><th style="width:140px">Progress</th><th>Status</th><th>Due</th><th>Owner</th></tr></thead><tbody>
+   ${[["Reduce Emissions (Scope 1&2)","-30% by 2030 (vs 2022)",18,"On Track","Dec 2030","R. Sharma"],["Water Stewardship","-20% usage by 2026",32,"On Track","Dec 2026","A. Khan"],["Waste Management","75% diversion by 2025",72,"At Risk","Dec 2025","M. Johnson"],["Supplier Engagement","Assess 100% key suppliers",68,"In Progress","Dec 2025","S. Lee"]].map(p=>`<tr><td><b>${p[0]}</b></td><td style="font-size:11px">${p[1]}</td><td>${bar(p[2],p[3]==="At Risk"?"b-amb":"")}</td><td>${badge(p[3],stBadge(p[3]))}</td><td class="mono">${p[4]}</td><td>${p[5]}</td></tr>`).join("")}
+   </tbody></table></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Emissions Overview (t CO₂e)</h3></div><div class="bd" style="display:flex;gap:14px;align-items:center">
+    ${donut("var(--navy) 0 10%, var(--blue) 10% 31%, var(--green) 31% 100%","125,430","t CO₂e")}
+    <div class="legend">${[["Scope 1 · 12,450","10%","var(--navy)"],["Scope 2 · 26,780","21%","var(--blue)"],["Scope 3 · 86,200","69%","var(--green)"]].map(l=>`<div class="li"><span class="sw" style="background:${l[2]}"></span>${l[0]}<span class="lv">${l[1]}</span></div>`).join("")}</div>
+   </div></div>
+   <div class="card"><div class="hd"><h3>Framework Reports</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:8px">
+    ${["GRI Universal 2021","CSRD / ESRS E1–E5","CDP Climate 2026","TCFD Disclosure","SASB Apparel"].map(f=>`<div style="display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12px"><span>📑</span><b style="flex:1">${f}</b><button class="btn btn-o btn-sm" onclick="toast('Framework-aligned report generated: <b>${f}</b> (PDF + XBRL where applicable)')">Generate</button></div>`).join("")}
+   </div></div>
+  </div>
+ </div>`)},
+
+/* 11 VERIFICATION MARKETPLACE */
+{id:"verify",nav:"Verify Mkt",label:"SCREEN 11 · VERIFICATION MARKETPLACE — TRUST THROUGH INDEPENDENT VERIFICATION",render:()=>frame("verify","Verification Marketplace","Approved auditors · labs · inspection bodies",`
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Verification Requests</h3><div class="r"><button class="btn btn-p btn-sm" onclick="vrModal()">＋ New Verification Request</button></div></div>
+   <table><thead><tr><th>ID</th><th>Type</th><th>Target</th><th>Requested by</th><th>Auditor</th><th>Status</th><th>Due</th></tr></thead><tbody id="vr-body">
+   ${D.verifs.map(v=>vrRow(v)).join("")}
+   </tbody></table></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Verification Journey</h3></div><div class="bd">
+    <div class="timeline">${[["Buyer Request","Scope, standard & timeline defined",0],["Marketplace","Published to approved network",0],["Approved Auditor","Competitive bidding / assignment",0],["Verification","On-site or remote, per scope",0],["Digital Report","Uploaded & digitally signed on STT",1],["Verified Status","Shared with buyer & linked to TC / Wallet / DPP",1]].map((s,i)=>`<div class="tl ${s[2]?"pend":""}"><div class="pt"></div><div><b>0${i+1} ${s[0]}</b><span>${s[1]}</span></div></div>`).join("")}</div>
+   </div></div>
+   <div class="card"><div class="hd"><h3>Services Available</h3></div><div class="bd" style="display:flex;flex-wrap:wrap;gap:7px">
+    ${["Physical","Certificate","Material","Capacity","Social Compliance","Environmental","ESG","Supply Chain","Custom"].map(s=>`<span class="badge b-n" style="cursor:pointer" onclick="toast('Service scope sheet simulated: <b>${s} Verification</b> — pricing $115–199/man-day')">${s}</span>`).join("")}
+   </div></div>
+  </div>
+ </div>`)},
+
+/* 12 DPP */
+{id:"dpp",nav:"DPP Public",label:"SCREEN 12 · DIGITAL PRODUCT PASSPORT — CONSUMER QR SCAN VIEW (NO LOGIN)",render:()=>`
+ <div style="height:100%;overflow-y:auto;background:linear-gradient(180deg,#0F3B2E,var(--navy-deep) 340px);display:flex;justify-content:center;padding:26px 14px 60px">
+  <div style="width:min(480px,100%)">
+   <div style="text-align:center;color:#fff;margin-bottom:16px">
+    <div style="font-size:10px;letter-spacing:2px;color:#7FD9AC">DIGITAL PRODUCT PASSPORT · EU ESPR READY</div>
+    <div class="logo" style="justify-content:center;margin-top:6px">S<b>TT</b></div>
+   </div>
+   <div class="card" style="border-radius:18px">
+    <div style="background:linear-gradient(135deg,#E9F6EF,#F4FBF7);padding:22px;display:flex;gap:16px;align-items:center;border-bottom:1px solid var(--line)">
+     <div class="qr" role="img" aria-label="QR code"></div>
+     <div>
+      <div style="font-size:10px;color:var(--mut);letter-spacing:1px">PASSPORT ID</div>
+      <div class="mono" style="font-size:13px;font-weight:600">DPP-BD-7731-00042</div>
+      <h2 style="font-family:var(--disp);font-size:17px;margin-top:6px">Men's Organic Tee · 160 GSM</h2>
+      <div style="margin-top:6px">${badge("✓ Chain fully verified","b-g")}</div>
+     </div>
+    </div>
+    <div class="bd" style="display:flex;flex-direction:column;gap:14px">
+     <div><h3 style="font-size:12px;margin-bottom:8px">🧵 Materials & Composition</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${badge("60% Organic Cotton (GOTS)","b-g")}${badge("40% Recycled Polyester (GRS)","b-b")}${badge("Reactive dye · ZDHC L1","b-n")}</div></div>
+     <div><h3 style="font-size:12px;margin-bottom:8px">🌍 Origin & Journey</h3>
+      <div class="timeline">
+      ${[["Raw cotton","Gujarat, India · Delta Cotton Traders","TC-08790 · Feb 2026"],["Spinning","Sundarban Spinning Mills, BD","TC-08841 · Mar 2026"],["Knitting & Dyeing","KnitPro + GreenDye, Chattogram","TC-08802/19 · Apr 2026"],["Garment making","Chattogram Apparel Ltd. · Fair-wage audited","TC-08833 · Jun 2026"],["Shipped to EU","Hamburg, Germany","Jul 2026"]].map(s=>`<div class="tl"><div class="pt"></div><div><b>${s[0]}</b><span>${s[1]}</span><div class="t">${s[2]}</div></div></div>`).join("")}
+      </div></div>
+     <div class="grid g3" style="gap:8px">
+      ${[["💧","28 L","water footprint"],["☁️","2.1 kg","CO₂e per unit"],["♻️","94%","recyclable"]].map(x=>`<div style="border:1px solid var(--line);border-radius:11px;padding:11px;text-align:center"><div style="font-size:16px">${x[0]}</div><div style="font-family:var(--disp);font-weight:700;font-size:15px;margin-top:3px">${x[1]}</div><div style="font-size:9.5px;color:var(--mut)">${x[2]}</div></div>`).join("")}
+     </div>
+     <div><h3 style="font-size:12px;margin-bottom:8px">🧼 Care & End of Life</h3>
+      <p style="font-size:11.5px;color:var(--mut);line-height:1.6">Wash cold 30°C · line dry · do not bleach. Repairable seams. Return to any partner store for fiber-to-fiber recycling.</p></div>
+     <div style="display:flex;gap:8px">
+      <button class="btn btn-p" style="flex:1;justify-content:center" onclick="toast('Verification chain opened — every TC hash publicly verifiable')">🔗 Verify authenticity</button>
+      <button class="btn btn-o" style="flex:1;justify-content:center" onclick="toast('Full ESPR data sheet simulated (chemical content, durability, spare parts)')">Full data sheet</button>
+     </div>
+    </div>
+   </div>
+   <p style="text-align:center;color:#8FA6BE;font-size:10px;margin-top:14px">Scanned via QR · no login required · served from CDN edge</p>
+  </div>
+ </div>`},
+
+/* 13 REPORTS & ALERTS */
+{id:"reports",nav:"Reports",label:"SCREEN 13 · REPORTS & DASHBOARDS — BUILD · SCHEDULE · EXPORT",render:()=>frame("reports","Reports & Dashboards","See clearly. Report confidently. Act decisively.",`
+ <div class="kpis">
+  ${kpi("REPORTS GENERATED","186","▲ 18% vs last 30 days","up","📊")}${kpi("SCHEDULED","24","active schedules","up","🗓️")}${kpi("DATA EXPORTS","96","▲ 12%","up","⬇️")}${kpi("ACTIVE USERS","342","▲ 15%","up","👥")}
+ </div>
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Recent Reports</h3><div class="r"><button class="btn btn-p btn-sm" onclick="reportModal()">＋ Custom Report Builder</button></div></div>
+   <table><thead><tr><th>Report</th><th>Category</th><th>Type</th><th>Generated</th><th>Format</th><th></th></tr></thead><tbody>
+   ${[["Enterprise Risk Summary","Risk","Dashboard","Jul 11, 08:30","PDF"],["Compliance Status Report","Compliance","Scheduled","Jul 11, 07:00","Excel"],["Sustainability Performance","Sustainability","Custom","Jul 10, 16:15","PPTX"],["Supplier Risk Analysis","Risk","Custom","Jul 10, 11:20","PDF"],["ESG Data Summary","Sustainability","Scheduled","Jul 09, 09:00","Excel"]].map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${badge(r[2],r[2]==="Scheduled"?"b-b":"b-n")}</td><td class="mono">${r[3]}</td><td class="mono">${r[4]}</td><td><span class="link" onclick="toast('Download simulated: <b>${r[0]}.${r[4].toLowerCase()}</b>')">Download</span></td></tr>`).join("")}
+   </tbody></table></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Users by Role</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:10px">
+    ${[["Executives",28],["Managers",31],["Analysts",23],["Operators",12],["Other",6]].map(u=>`<div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px"><b>${u[0]}</b><span class="mono">${u[1]}%</span></div><div class="bar b-blue"><i style="width:${u[1]*2.6}%"></i></div></div>`).join("")}
+   </div></div>
+   <div class="card"><div class="hd"><h3>Destinations</h3></div><div class="bd" style="display:flex;flex-wrap:wrap;gap:7px">
+    ${["📧 Email","🗓️ Scheduled","⬇ Download","🔗 Share Link","⚙️ API Export"].map(d=>`<span class="badge b-n">${d}</span>`).join("")}
+   </div></div>
+  </div>
+ </div>`)},
+
+/* 14 ALERTS */
+{id:"alerts",nav:"Alerts",label:"SCREEN 14 · ALERTING & NOTIFICATIONS — RIGHT ALERT · RIGHT PERSON · RIGHT TIME",render:()=>frame("alerts","Alerting & Notifications","Multi-channel · escalation · full audit trail",`
+ <div class="kpis">
+  ${kpi("TOTAL ALERTS","248","▲ 16% (more coverage)","wr","🔔")}${kpi("CRITICAL","18","▲ 6 — act now","dn","🟥")}${kpi("HIGH","56","▲ 12%","dn","🟧")}${kpi("AVG RESPONSE","1h 24m","▼ 12% faster","up","⏱️")}
+ </div>
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Recent Alerts</h3><div class="r"><button class="btn btn-o btn-sm" onclick="toast('Alert rule builder simulated — condition, threshold, audience, channel, escalation path')">＋ Alert rule</button></div></div>
+   <table><thead><tr><th>Alert</th><th>Category</th><th>Severity</th><th>Triggered</th><th>Status</th><th>Assigned</th></tr></thead><tbody>
+   ${D.alerts.map(a=>`<tr class="click" onclick="toast('Alert detail simulated: <b>${a.t}</b> — context, history, escalation, resolution notes')"><td style="max-width:250px"><b>${a.t}</b></td><td>${a.c}</td><td>${badge(a.sv,stBadge(a.sv))}</td><td class="mono">${a.on}</td><td>${badge(a.st,stBadge(a.st))}</td><td>${a.who}</td></tr>`).join("")}
+   </tbody></table></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Delivery Channels</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:8px">
+    ${[["📧 Email","2,140 sent · 99.2% delivered",1],["📱 SMS","312 sent · Twilio + BD aggregator",1],["💬 Slack / Teams","884 posted",1],["🔗 Webhooks / API","1,206 calls",1],["🖥️ ServiceNow","64 tickets auto-created",0]].map(c=>`<div style="display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:11.5px"><b style="flex:1">${c[0]}</b><span style="color:var(--mut)">${c[1]}</span>${badge(c[2]?"Active":"Off",c[2]?"b-g":"b-n")}</div>`).join("")}
+   </div></div>
+   <div class="card"><div class="hd"><h3>Escalation Policy</h3></div><div class="bd">
+    <div class="timeline">${[["0 min · Owner notified","in-app + email"],["30 min · Manager escalation","if unacknowledged"],["2 h · Dept head + SMS",""],["4 h · Executive channel","critical only"]].map((e,i)=>`<div class="tl ${i>1?"pend":""}"><div class="pt"></div><div><b>${e[0]}</b><span>${e[1]}</span></div></div>`).join("")}</div>
+   </div></div>
+  </div>
+ </div>`)},
+
+/* 15 BILLING */
+{id:"billing",nav:"Membership",label:"SCREEN 15 · MEMBERSHIP & BILLING — PLANS · USAGE · EXPIRY STATE MACHINE",render:()=>frame("billing","Membership & Billing","Transparent pricing · no hidden fees",`
+ <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+  ${[["👁️","View Access","$290","Commissioning, knitting, dyeing, washing, printing units",0],["🏭","Facility","$490","Mills, yarn/fabric suppliers, garment factories",1],["🤝","Importer & Supply Chain","$390","Importers, trading houses, sourcing agents",0],["🛍️","Buyer & Brand","$440","Retailers, brands, buying offices",0]].map(p=>`
+  <div class="card" style="${p[4]?"outline:2px solid var(--green)":""}"><div class="bd">
+   <div style="font-size:19px">${p[0]}</div>
+   <b style="display:block;margin-top:7px;font-size:12.5px">${p[1]}</b>
+   <div style="font-family:var(--disp);font-size:21px;font-weight:700;margin-top:5px">${p[2]}<span style="font-size:10px;color:var(--mut)"> /yr</span></div>
+   <p style="font-size:10.5px;color:var(--mut);margin-top:6px;line-height:1.5">${p[3]}</p>
+   ${p[4]?`<div style="margin-top:9px">${badge("Current plan","b-g")}</div>`:`<button class="btn btn-o btn-sm" style="margin-top:9px" onclick="toast('Plan change simulated → prorated invoice drafted')">Switch</button>`}
+  </div></div>`).join("")}
+ </div>
+ <div class="grid g32">
+  <div class="card"><div class="hd"><h3>Usage-Based Add-ons (this period)</h3></div>
+   <table><thead><tr><th>Service</th><th>Unit price</th><th>Used</th><th>Amount</th></tr></thead><tbody>
+   ${[["Transaction Certificates","$1.00 / TC","64","$64.00"],["Product Passports","$9 – $49","3 styles","$87.00"],["Physical Verification","$115–199 / man-day","2 days","$348.00"],["ESG Assessment Report","$50 – $150","1","$95.00"]].map(u=>`<tr><td><b>${u[0]}</b></td><td class="mono">${u[1]}</td><td class="mono">${u[2]}</td><td class="mono"><b>${u[3]}</b></td></tr>`).join("")}
+   <tr><td colspan="3" style="text-align:right;color:var(--mut)">Period total</td><td class="mono"><b>$594.00</b></td></tr>
+   </tbody></table></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card"><div class="hd"><h3>Subscription</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:9px;font-size:12px">
+    ${[["Status",expired?"⛔ Expired":"✅ Active"],["Renews","Mar 15, 2027 · auto"],["Onboarding fee","$500 · paid (non-refundable)"],["Payment method","Visa •• 4got · Stripe"],["Data retention on expiry","12 months archived"]].map(r=>`<div style="display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:7px"><span style="color:var(--mut)">${r[0]}</span><b>${r[1]}</b></div>`).join("")}
+    <button class="btn ${expired?"btn-p":"btn-o"}" style="justify-content:center" onclick="toggleExpiry()">${expired?"▶ Simulate renewal (restore access)":"⏸ Simulate membership expiry"}</button>
+    <div class="note">Try it: expiry instantly suspends platform access, TC issuance, Material Wallet, DPP generation & verification requests — exactly per policy. Renewal restores instantly.</div>
+   </div></div>
+  </div>
+ </div>`)}
+];
+
+/* ═══════════════ INTERACTIONS ═══════════════ */
+function trfRow(t){return `<tr class="click" onclick="tcModal('${t.tc}','${t.mat}','${t.qty}','${t.from}','${t.to}','${t.date}')"><td class="mono">${t.id}</td><td style="font-size:11px"><b>${t.from}</b> →<br>${t.to}</td><td style="font-size:11.5px">${t.mat}</td><td class="mono">${t.qty}</td><td><span class="link">${t.tc}</span></td><td>${badge(t.st,"b-g")}</td></tr>`}
+function vrRow(v){return `<tr class="click" onclick="toast('Request detail simulated: <b>${v.id}</b> — scope, standard, bids, schedule')"><td class="mono">${v.id}</td><td>${v.type}</td><td><b>${v.target}</b></td><td>${v.req}</td><td style="font-size:11px">${v.auditor}</td><td>${badge(v.st,stBadge(v.st))}</td><td class="mono">${v.due}</td></tr>`}
+
+function orderModal(id){const o=D.orders.find(x=>x.id===id);openModal(mhd("Order "+id)+`<div class="mbd">
+ <div style="display:flex;gap:8px;flex-wrap:wrap">${badge(o.st,stBadge(o.st))}${badge(o.qty,"b-n")}${badge("ETA "+o.eta,"b-b")}</div>
+ <div class="grid g2" style="gap:10px;font-size:12px">
+  <div class="form-g"><label>Buyer</label><b>${o.buyer}</b></div><div class="form-g"><label>Style</label><b>${o.style}</b></div>
+  <div class="form-g"><label>Origin</label><b>${o.origin}</b></div><div class="form-g"><label>Destination</label><b>${o.dest}</b></div>
+ </div>
+ <div><label style="font-size:10.5px;font-weight:600;color:var(--mut)">MILESTONES</label>
+ <div class="timeline" style="margin-top:8px">${[["PO confirmed","May 02 · validated ✓",0],["Materials secured","May 20 · wallet-verified inputs ✓",0],["Production","Jun 28 · 100% complete ✓",0],["Ex-factory & shipped","Jul 04 · MV Green Horizon ✓",0],["Port arrival — Hamburg","ETA "+o.eta,1],["Delivered","pending",1]].map(m=>`<div class="tl ${m[2]?"pend":""}"><div class="pt"></div><div><b>${m[0]}</b><span>${m[1]}</span></div></div>`).join("")}</div></div>
+ ${o.st==="Exception"?`<div class="warnbox">🚨 <b>Exception:</b> Ex-Factory milestone missed by 3 days — knitting delay upstream. AI ETA-slip probability: 64%. Suggested action: notify buyer + book priority slot.</div>`:""}
+ <div style="display:flex;gap:8px"><button class="btn btn-p" onclick="closeModal();toast('Buyer notification sent with revised ETA')">Notify buyer</button><button class="btn btn-o" onclick="closeModal();go('chainmap')">View trace chain</button></div>
+</div>`)}
+
+function tcModal(tc,mat,qty,from,to,date){openModal(mhd("Transaction Certificate "+tc)+`<div class="mbd">
+ <div style="display:flex;justify-content:center">${badge("✓ Digitally signed · hash-anchored","b-g")}</div>
+ <div style="background:#F7FAFC;border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:12px">
+  ${[["Certificate ID",tc],["Material",mat],["Quantity",qty],["From",from],["To",to],["Issue date",date],["Standard","GOTS 7.0 chain of custody"],["Ledger hash","0x"+Math.random().toString(16).slice(2,10)+"…"+Math.random().toString(16).slice(2,6)]].map(r=>`<div style="display:flex;justify-content:space-between;gap:14px"><span style="color:var(--mut)">${r[0]}</span><b class="mono" style="text-align:right">${r[1]}</b></div>`).join("")}
+ </div>
+ <div class="note">🔗 This TC is part of an immutable, hash-chained ledger. Any party with the ID can verify authenticity without seeing commercial data.</div>
+ <div style="display:flex;gap:8px"><button class="btn btn-p" onclick="closeModal();toast('TC PDF downloaded (signed)')">⬇ Download signed PDF</button><button class="btn btn-o" onclick="closeModal();toast('Public verification link copied')">Copy verify link</button></div>
+</div>`)}
+
+function transferModal(){openModal(mhd("New Material Transfer")+`<div class="mbd">
+ <div class="grid g2" style="gap:10px">
+  <div class="form-g"><label>Material wallet</label><select id="tf-w">${D.wallets.map((w,i)=>`<option value="${i}">${w.mat} — ${w.bal.toLocaleString()} kg</option>`).join("")}</select></div>
+  <div class="form-g"><label>Quantity (kg)</label><input id="tf-q" type="number" value="2500"></div>
+  <div class="form-g"><label>Recipient organization</label><select id="tf-to"><option>GreenTex Fabrics</option><option>NordStyle GmbH (Buyer)</option><option>KnitPro Fabrics BD</option></select></div>
+  <div class="form-g"><label>Linked order</label><select><option>ORD-260712-001</option><option>ORD-260705-004</option><option>—</option></select></div>
+ </div>
+ <div class="note">A Transaction Certificate will be auto-issued ($1.00) and the mass-balance invariant checked before commit.</div>
+ <button class="btn btn-p" style="justify-content:center" onclick="doTransfer()">Execute transfer & issue TC →</button>
+</div>`)}
+
+function doTransfer(){
+ const wi=+$("#tf-w").value, q=+$("#tf-q").value, to=$("#tf-to").value, w=D.wallets[wi];
+ if(q<=0||isNaN(q)){toast("⚠️ Enter a valid quantity");return}
+ if(q>w.bal){closeModal();openModal(mhd("Transfer rejected by ledger")+`<div class="mbd"><div class="warnbox">⛔ <b>Mass-balance violation:</b> requested ${q.toLocaleString()} kg exceeds available verified balance of ${w.bal.toLocaleString()} kg in <b>${w.mat}</b>.<br><br>The ledger layer rejected this transaction before commit. No TC was issued, no state changed.</div><button class="btn btn-o" style="justify-content:center" onclick="closeModal()">Understood</button></div>`);return}
+ w.bal-=q; const tc="TC-0"+(tcCounter++), trf={id:"TRF-"+(trfCounter++),from:D.org.name,to,mat:w.mat,qty:q.toLocaleString()+" kg",tc,date:"Jul 12, 2026",st:"Completed"};
+ D.transfers.unshift(trf);
+ const balEl=document.querySelector(`[data-bal="${wi}"]`); if(balEl)balEl.innerHTML=`${w.bal.toLocaleString()} <span style="font-size:11px;color:var(--mut)">kg</span>`;
+ const tb=$("#trf-body"); if(tb)tb.innerHTML=D.transfers.map(t=>trfRow(t)).join("");
+ closeModal(); toast(`Transfer executed → <b>${tc}</b> issued · ${w.mat} balance updated`);
+ setTimeout(()=>tcModal(tc,w.mat,q.toLocaleString()+" kg",D.org.name,to,"Jul 12, 2026"),500);
+}
+
+function aiCalcModal(){openModal(mhd("✦ AI Material Requirement Calculator")+`<div class="mbd">
+ <div class="grid g2" style="gap:10px">
+  <div class="form-g"><label>Order quantity (pcs)</label><input value="100,000" disabled></div>
+  <div class="form-g"><label>Fabric GSM</label><input value="160" disabled></div>
+  <div class="form-g"><label>Composition</label><input value="60% Cotton / 40% Polyester" disabled></div>
+  <div class="form-g"><label>Garment</label><input value="Men's Tee (avg 0.42 m²)" disabled></div>
+ </div>
+ <div style="background:#F7FAFC;border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:12px">
+  <b style="font-size:11px;color:var(--mut)">STT AUTOMATICALLY CALCULATES (deterministic formula engine)</b>
+  ${[["Fabric requirement","7,392 kg (incl. 10% wastage)"],["Cotton requirement","4,435 kg"],["Polyester requirement","2,957 kg"],["Yarn requirement (30/1)","7,690 kg"],["Supplier capacity check","✅ Sundarban: available Jul 20+"],["Material gap vs wallet","▲ Need +1,240 kg organic cotton"],["Landed cost estimate","$1.84 / pc (optional)"]].map(r=>`<div style="display:flex;justify-content:space-between"><span style="color:var(--mut)">${r[0]}</span><b class="mono">${r[1]}</b></div>`).join("")}
+ </div>
+ <div style="display:flex;gap:8px"><button class="btn btn-p" onclick="closeModal();toast('Purchase requisition drafted for <b>+1,240 kg</b> organic cotton → Delta Cotton Traders')">Draft requisition for gap</button><button class="btn btn-o" onclick="closeModal()">Close</button></div>
+</div>`)}
+
+function extractModal(){openModal(mhd("✦ AI Extraction — GOTS_cert_4471.pdf")+`<div class="mbd">
+ <div style="display:flex;gap:8px">${badge("OCR complete","b-g")}${badge("LLM structured extraction","b-p")}${badge("Schema validated","b-g")}</div>
+ <div style="background:#F7FAFC;border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:12px">
+  ${[["Certificate type","GOTS Scope Certificate","99%"],["Holder","Sundarban Spinning Mills","98%"],["Certificate no.","GOTS-4471-2026","99%"],["Valid until","Aug 10, 2026","97%"],["Certified products","Organic cotton yarn 20/1–40/1","95%"],["Certifier body","Control Union","99%"],["Annex facilities","2 sites listed","86% ⚠"]].map(r=>`<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:var(--mut)">${r[0]}</span><span style="text-align:right"><b>${r[1]}</b> <span class="mono" style="color:${parseInt(r[2])<90?"var(--amber)":"var(--green)"};font-size:10px">${r[2]}</span></span></div>`).join("")}
+ </div>
+ <div class="warnbox">⚠ 1 field below 90% confidence (<b>Annex facilities</b>) → routed to human review queue. Nothing auto-commits without validation.</div>
+ <button class="btn btn-p" style="justify-content:center" onclick="closeModal();toast('6 fields committed · 1 field sent to review queue · source doc archived to evidence vault')">Commit verified fields</button>
+</div>`)}
+
+function riskModal(i){const r=D.risks[i];openModal(mhd("Risk Drill-Down")+`<div class="mbd">
+ <div style="display:flex;gap:8px;flex-wrap:wrap">${badge(r.lv+" risk",stBadge(r.lv))}${badge(r.t,"b-n")}${badge(r.st,stBadge(r.st))}</div>
+ <div><b style="font-size:14px">${r.e}</b><p style="font-size:12px;color:var(--mut);margin-top:5px;line-height:1.6">${r.d}</p></div>
+ <div style="background:#F7FAFC;border:1px solid var(--line);border-radius:12px;padding:14px;font-size:12px">
+  <b style="font-size:11px;color:var(--mut)">AI ROOT-CAUSE SIGNALS (SHAP)</b>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+  ${[["Audit finding severity",82],["Regulatory list match",74],["Historical incidents",41],["Geographic factor",22]].map(s=>`<div><div style="display:flex;justify-content:space-between;font-size:11px"><span>${s[0]}</span><span class="mono">${s[1]}</span></div><div class="bar ${s[1]>60?"b-red":s[1]>35?"b-amb":""}"><i style="width:${s[1]}%"></i></div></div>`).join("")}
+  </div></div>
+ <div style="display:flex;gap:8px"><button class="btn btn-p" onclick="closeModal();toast('Mitigation plan created · owner assigned · tracking to closure')">Create mitigation plan</button><button class="btn btn-o" onclick="closeModal();go('verify')">Request verification</button></div>
+</div>`)}
+
+function vrModal(){openModal(mhd("New Verification Request")+`<div class="mbd">
+ <div class="grid g2" style="gap:10px">
+  <div class="form-g"><label>Verification type</label><select id="vr-t"><option>Physical Verification</option><option>Material Verification</option><option>Social Compliance</option><option>ESG Verification</option><option>Capacity Verification</option></select></div>
+  <div class="form-g"><label>Target</label><select id="vr-g"><option>Unit-3 Sewing Facility</option><option>GreenDye Processing</option><option>Organic Cotton Lot #OC-2274</option></select></div>
+  <div class="form-g"><label>Standard / scope</label><input value="amfori BSCI + local labour law"></div>
+  <div class="form-g"><label>Deadline</label><input value="Jul 30, 2026"></div>
+ </div>
+ <div class="note">Published to the approved auditor network for competitive bidding. Typical cost: <b>$115–199 / man-day</b>. Report is digitally signed & auto-linked to TC / Wallet / DPP.</div>
+ <button class="btn btn-p" style="justify-content:center" onclick="doVr()">Publish to marketplace →</button>
+</div>`)}
+function doVr(){const v={id:"VR-0"+(vrCounter++),type:$("#vr-t").value,target:$("#vr-g").value,req:D.org.name,auditor:"Pending Assignment",st:"Open for Bids",due:"Jul 30, 2026"};D.verifs.unshift(v);const b=$("#vr-body");if(b)b.innerHTML=D.verifs.map(x=>vrRow(x)).join("");closeModal();toast(`<b>${v.id}</b> published — 6 approved auditors notified`)}
+
+function reportModal(){openModal(mhd("Custom Report Builder")+`<div class="mbd">
+ <div class="grid g2" style="gap:10px">
+  <div class="form-g"><label>Data source</label><select><option>Risk Hub</option><option>Orders</option><option>Compliance</option><option>Sustainability</option><option>Material Wallet</option></select></div>
+  <div class="form-g"><label>Layout</label><select><option>Executive summary</option><option>Detailed table</option><option>Board deck</option></select></div>
+  <div class="form-g"><label>Schedule</label><select><option>One-time</option><option>Weekly (Mon 07:00)</option><option>Monthly</option></select></div>
+  <div class="form-g"><label>Format</label><select><option>PDF</option><option>Excel</option><option>PowerPoint</option><option>CSV</option></select></div>
+ </div>
+ <div class="form-g"><label>Recipients</label><input value="ceo@…, sustainability@…, buyer-portal (share link)"></div>
+ <button class="btn btn-p" style="justify-content:center" onclick="closeModal();toast('Report scheduled — first run queued · role-based access applied')">Create & schedule</button>
+</div>`)}
+
+function toggleExpiry(){expired=!expired;document.querySelectorAll("[data-suspend]").forEach(b=>b.classList.toggle("on",expired));document.querySelectorAll("[data-lockable]").forEach(b=>b.classList.toggle("locked",expired&&!b.closest(".screen")?.querySelector("[data-billing-keep]")));
+ /* billing screen stays usable */ const bill=document.querySelector('[data-sid="billing"] [data-lockable]'); if(bill)bill.classList.remove("locked");
+ render(); toast(expired?"⛔ Membership expired — services suspended (data archived 12 months)":"✅ Renewed — full access restored instantly")}
+
+/* ═══════════════ RENDER & NAV ═══════════════ */
+function render(){
+ $("#deck").innerHTML=SCREENS.map(s=>`<section class="screen" data-sid="${s.id}">${s.render()}<div class="screen-label">${s.label}</div></section>`).join("");
+ if(expired){document.querySelectorAll("[data-lockable]").forEach(b=>b.classList.add("locked"));const bill=document.querySelector('[data-sid="billing"] [data-lockable]');if(bill)bill.classList.remove("locked");}
+ $("#flownav").innerHTML=SCREENS.map((s,i)=>`<button class="fchip" data-fi="${i}" onclick="goIdx(${i})"><span class="n">${String(i+1).padStart(2,"0")}</span>${s.nav}</button>`).join("");
+ syncChips();
+}
+function goIdx(i){$("#deck").scrollTo({left:i*innerWidth,behavior:"smooth"})}
+function go(id){const i=SCREENS.findIndex(s=>s.id===id||{"dash":"dash"}[id]===s.id);goIdx(i<0?2:i)}
+function nav(d){const i=Math.round($("#deck").scrollLeft/innerWidth);goIdx(Math.max(0,Math.min(SCREENS.length-1,i+d)))}
+function syncChips(){const i=Math.round($("#deck").scrollLeft/innerWidth);document.querySelectorAll(".fchip").forEach((c,j)=>c.classList.toggle("on",j===i));const on=document.querySelector(".fchip.on");if(on)on.scrollIntoView({inline:"center",block:"nearest"})}
+document.addEventListener("keydown",e=>{if(e.key==="ArrowRight")nav(1);if(e.key==="ArrowLeft")nav(-1);if(e.key==="Escape")closeModal()});
+render();
+$("#deck").addEventListener("scroll",()=>requestAnimationFrame(syncChips));
+/* map sidebar ids that differ from screen ids */
+const _go=go; go=id=>{const map={dash:"dash",orders:"orders",materials:"materials",wallet:"wallet",chainmap:"chainmap",risk:"risk",compliance:"compliance",sustain:"sustain",verify:"verify",reports:"reports",alerts:"alerts",billing:"billing"};_go(map[id]||id)};
+</script>
+</body>
+</html>

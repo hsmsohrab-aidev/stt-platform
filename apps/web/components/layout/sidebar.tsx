@@ -1,42 +1,101 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-const navItems = [
-  { href: '/', label: 'Overview' },
-  { href: '/brand', label: 'Brand' },
-  { href: '/supplier', label: 'Supplier' },
-  { href: '/auditor', label: 'Auditor' },
+type NavItem = {
+  href: string;
+  label: string;
+  badge?: number;
+};
+
+const operate: NavItem[] = [
+  { href: '/', label: 'Dashboard' },
+  { href: '/orders', label: 'Orders' },
+  { href: '/materials', label: 'Materials' },
+  { href: '/wallet', label: 'Material Wallet' },
+  { href: '/supply-chain', label: 'Supply Chain' },
 ];
+
+const assure: NavItem[] = [
+  { href: '/risk', label: 'Risk Hub', badge: 18 },
+  { href: '/compliance', label: 'Compliance' },
+  { href: '/sustainability', label: 'Sustainability' },
+  { href: '/verification', label: 'Verification' },
+];
+
+const decide: NavItem[] = [
+  { href: '/reports', label: 'Reports' },
+  { href: '/alerts', label: 'Alerts', badge: 5 },
+  { href: '/membership', label: 'Membership' },
+];
+
+function NavSection({
+  title,
+  items,
+  pathname,
+}: {
+  title: string;
+  items: NavItem[];
+  pathname: string;
+}) {
+  return (
+    <div className="mt-1">
+      <p className="px-2.5 pb-1 pt-3 text-[9px] font-medium uppercase tracking-[1.5px] text-[#5D7189]">
+        {title}
+      </p>
+      <div className="flex flex-col gap-0.5">
+        {items.map((item) => {
+          const active =
+            item.href === '/'
+              ? pathname === '/'
+              : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition',
+                active
+                  ? 'bg-stt-green text-white'
+                  : 'text-[#A9BCD1] hover:bg-white/10 hover:text-white'
+              )}
+            >
+              <span className="flex-1">{item.label}</span>
+              {item.badge ? (
+                <span className="rounded-full bg-stt-red px-1.5 py-0.5 text-[9px] font-bold text-white">
+                  {item.badge}
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 type SidebarProps = {
   className?: string;
 };
 
 export function Sidebar({ className }: SidebarProps) {
+  const pathname = usePathname();
+
   return (
     <aside
       className={cn(
-        'flex w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground',
+        'flex w-[198px] shrink-0 flex-col overflow-y-auto bg-stt-navy px-2.5 py-3.5',
         className
       )}
     >
-      <div className="border-b border-sidebar-border px-5 py-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-sidebar-primary">
-          STT
-        </p>
-        <p className="mt-1 text-sm font-semibold">Platform</p>
+      <div className="px-2.5 pb-3.5 font-display text-[17px] font-extrabold tracking-wide text-white">
+        S<span className="text-stt-green">TT</span>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      <NavSection title="Operate" items={operate} pathname={pathname} />
+      <NavSection title="Assure" items={assure} pathname={pathname} />
+      <NavSection title="Decide" items={decide} pathname={pathname} />
     </aside>
   );
 }

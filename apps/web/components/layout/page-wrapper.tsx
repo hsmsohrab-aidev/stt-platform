@@ -18,11 +18,13 @@ export function PageWrapper({
   className,
 }: PageWrapperProps) {
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-stt-bg">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header title={title} description={description} actions={actions} />
-        <main className={cn('flex-1 px-6 py-6', className)}>{children}</main>
+        <main className={cn('flex-1 overflow-y-auto px-4 py-4 pb-10', className)}>
+          {children}
+        </main>
       </div>
     </div>
   );

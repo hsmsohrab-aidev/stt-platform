@@ -4,14 +4,6 @@ import { useFormState, useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { loginAction, type AuthActionState } from '@/app/(auth)/actions';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
 const initialState: AuthActionState = { error: null };
@@ -19,35 +11,90 @@ const initialState: AuthActionState = { error: null };
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? 'Signing in…' : 'Sign in'}
+    <Button
+      type="submit"
+      className="h-9 w-full rounded-[9px] bg-stt-green text-xs font-semibold hover:bg-stt-green-dark"
+      disabled={pending}
+    >
+      {pending ? 'Signing in…' : 'Sign in →'}
     </Button>
   );
 }
+
+const stats = [
+  ['500+', 'Factories'],
+  ['25+', 'Countries'],
+  ['1M+', 'Certificates'],
+  ['99.9%', 'Uptime'],
+];
 
 export default function LoginPage() {
   const [state, formAction] = useFormState(loginAction, initialState);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <p className="text-xs uppercase tracking-[0.2em] text-primary">STT</p>
-          <CardTitle className="mt-2">Sign in</CardTitle>
-          <CardDescription>
-            Access your supply chain workspace
-          </CardDescription>
-        </CardHeader>
-        <form action={formAction}>
-          <CardContent className="space-y-4">
+    <main className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
+      <section className="relative hidden flex-col justify-between bg-gradient-to-br from-stt-navy-deep via-stt-navy to-[#0F3B2E] px-12 py-12 text-white lg:flex">
+        <div className="font-display text-[26px] font-extrabold tracking-wide">
+          S<span className="text-stt-green">TT</span>
+          <span className="ml-3 border-l border-white/20 pl-3 text-[9px] font-medium uppercase tracking-[2px] text-[#8FA6BE]">
+            Smart Traceability
+            <br />
+            Technology
+          </span>
+        </div>
+
+        <div>
+          <h1 className="max-w-[420px] font-display text-[34px] font-bold leading-[1.2]">
+            One Platform.
+            <br />
+            Complete Transparency.
+            <br />
+            <span className="text-stt-green">From Source to Consumer.</span>
+          </h1>
+          <p className="mt-3.5 max-w-[400px] text-[13px] leading-relaxed text-[#A9BCD1]">
+            End-to-end supply chain visibility, verified data, Digital Product
+            Passports and compliance intelligence for the textile, apparel &amp;
+            footwear industry.
+          </p>
+          <div className="mt-7 flex gap-6">
+            {stats.map(([value, label]) => (
+              <div key={label}>
+                <div className="font-display text-[21px] font-bold text-stt-green">
+                  {value}
+                </div>
+                <div className="text-[10px] tracking-wide text-[#8FA6BE]">
+                  {label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-[10px] text-[#5D7189]">
+          Powered by SGC Global Assurance · Advancing Trust. Enabling
+          Sustainability.
+        </p>
+      </section>
+
+      <section className="grid place-items-center bg-stt-bg px-4 py-10">
+        <div className="w-full max-w-[360px] rounded-xl border border-stt-line bg-white p-6 shadow-[var(--stt-shadow)]">
+          <h2 className="font-display text-[19px] font-bold text-stt-ink">
+            Sign in to STT
+          </h2>
+          <p className="mt-1 text-[11.5px] text-stt-muted">
+            Enterprise access · MFA enforced
+          </p>
+
+          <form action={formAction} className="mt-5 space-y-3">
             {state.error ? (
-              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p className="rounded-[9px] bg-stt-red-soft px-3 py-2 text-[11.5px] text-stt-red">
                 {state.error}
               </p>
             ) : null}
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
+
+            <div className="space-y-1">
+              <label htmlFor="email" className="text-[10.5px] font-semibold text-stt-muted">
+                Work email
               </label>
               <Input
                 id="email"
@@ -56,10 +103,12 @@ export default function LoginPage() {
                 autoComplete="email"
                 required
                 placeholder="you@company.com"
+                className="h-9 rounded-lg text-xs"
               />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
+
+            <div className="space-y-1">
+              <label htmlFor="password" className="text-[10.5px] font-semibold text-stt-muted">
                 Password
               </label>
               <Input
@@ -69,20 +118,34 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 required
                 placeholder="••••••••"
+                className="h-9 rounded-lg text-xs"
               />
             </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-3">
+
             <SubmitButton />
-            <p className="text-sm text-muted-foreground">
+
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 w-full rounded-[9px] text-xs font-semibold"
+            >
+              Continue with company SSO
+            </Button>
+
+            <p className="rounded-[9px] border border-[#CCDCF9] bg-stt-blue-soft px-3 py-2 text-[11px] leading-relaxed text-[#1E4FA8]">
+              Register first if you don&apos;t have an account yet — org setup
+              comes after sign-in.
+            </p>
+
+            <p className="text-center text-xs text-stt-muted">
               No account?{' '}
-              <Link href="/register" className="text-primary hover:underline">
+              <Link href="/register" className="font-semibold text-stt-blue hover:underline">
                 Register
               </Link>
             </p>
-          </CardFooter>
-        </form>
-      </Card>
+          </form>
+        </div>
+      </section>
     </main>
   );
 }

@@ -10,15 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { createClient } from '@/lib/supabase/server';
 
 const orgTypes: OrgType[] = [
@@ -31,7 +22,6 @@ const orgTypes: OrgType[] = [
 ];
 
 export default async function HomePage() {
-  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'STT Platform';
   const supabase = createClient();
   const {
     data: { user },
@@ -47,77 +37,64 @@ export default async function HomePage() {
 
   return (
     <PageWrapper
-      title={appName}
-      description="Foundation ready — auth and design system online"
+      title="Executive Overview"
+      description="All business units"
       actions={
         <form action={logoutAction}>
-          <Button type="submit" variant="outline">
+          <Button
+            type="submit"
+            variant="outline"
+            className="h-8 rounded-[9px] text-xs font-semibold"
+          >
             Sign out
           </Button>
         </form>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Session</CardTitle>
-            <CardDescription>Current authenticated user</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex items-center justify-between gap-4">
-              <span>Email</span>
-              <span className="truncate font-medium">{user?.email ?? '—'}</span>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          ['Session', user?.email ?? '—'],
+          ['Profile', profile?.full_name ?? '—'],
+          ['Organization', profile?.organization_id ? 'Linked' : 'Not linked'],
+          ['Design system', 'Prototype v1.0 locked'],
+        ].map(([label, value]) => (
+          <div
+            key={label}
+            className="rounded-xl border border-stt-line bg-white p-3.5 shadow-[var(--stt-shadow)]"
+          >
+            <div className="text-[10.5px] font-semibold tracking-wide text-stt-muted">
+              {label}
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <span>Profile</span>
-              <Badge>{profile?.full_name ?? '—'}</Badge>
+            <div className="mt-1 truncate font-display text-[18px] font-bold text-stt-ink">
+              {value}
             </div>
-            <div className="flex items-center justify-between">
-              <span>Organization</span>
-              <Badge variant="secondary">
-                {profile?.organization_id ? 'Linked' : 'Not linked yet'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick search</CardTitle>
-            <CardDescription>Input component smoke test</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Input placeholder="Search organizations, TCs, facilities…" />
-          </CardContent>
-        </Card>
+          </div>
+        ))}
       </div>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Stakeholder roles</CardTitle>
-          <CardDescription>From shared OrgType enum</CardDescription>
+      <Card className="mt-3.5 rounded-xl border-stt-line shadow-[var(--stt-shadow)]">
+        <CardHeader className="border-b border-stt-line py-3">
+          <CardTitle className="text-[12.5px] font-bold">Stakeholder roles</CardTitle>
+          <CardDescription className="text-[11px]">
+            Shared OrgType — full dashboards land in Phase 1
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orgTypes.map((type) => (
-                <TableRow key={type}>
-                  <TableCell className="font-medium">{type}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">Planned</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <CardContent className="flex flex-wrap gap-2 pt-4">
+          {orgTypes.map((type) => (
+            <Badge
+              key={type}
+              className="rounded-full bg-stt-green-soft text-stt-green-dark hover:bg-stt-green-soft"
+            >
+              {type}
+            </Badge>
+          ))}
         </CardContent>
       </Card>
+
+      <div className="mt-3.5 rounded-[9px] border border-[#CCDCF9] bg-stt-blue-soft px-3 py-2.5 text-[11px] leading-relaxed text-[#1E4FA8]">
+        UI tokens follow <b>docs/DESIGN_SYSTEM.md</b> (from interactive prototype).
+        Next: Phase 1.1 core schema, then organization onboarding.
+      </div>
     </PageWrapper>
   );
 }

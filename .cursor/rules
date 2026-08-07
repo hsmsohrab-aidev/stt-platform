@@ -13,6 +13,16 @@
 - `/database/SCHEMA_REFERENCE.md` — table-by-table বাংলা + English reference
 - `/PROJECT_PLAN.md` — full project plan, roadmap, decisions log
 - `/packages/types/index.ts` — shared TypeScript types (schema থেকে generated)
+- `/docs/DESIGN_SYSTEM.md` — UI/UX source of truth (from interactive prototype)
+- `/docs/STT_Interactive_Prototype.html` — visual reference prototype v1.0
+
+## UI / DESIGN RULES
+1. সব UI কাজের আগে `docs/DESIGN_SYSTEM.md` পড়ো — প্রোটোটাইপের tokens follow করো
+2. Brand colors: navy `#0E2A47`, navy-deep `#081C33`, green `#12A45B` (পুরনো `#0A1628`/`#00A651` ব্যবহার করো না)
+3. Fonts: Sora (display), Inter (body), JetBrains Mono (IDs/codes)
+4. App shell: navy sidebar + white topbar + `#F2F5F9` canvas — generic purple/cream themes নিষিদ্ধ
+5. Login = split brand panel (বাম) + form card (ডান) — শুধু centered card নয়
+6. Design conflict হলে: DESIGN_SYSTEM.md > PROJECT_PLAN color drafts > ad-hoc taste
 
 ## DATABASE RULES
 1. সব table-এ `organization_id UUID` আছে — কোনো query-তে এটা ছাড়া কখনো data fetch করবে না

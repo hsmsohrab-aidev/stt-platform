@@ -1,6 +1,7 @@
 # STT Platform — Execution Checklist
 > Phase 0 → Phase 1 ধাপে ধাপে। প্রতিটি কাজ শেষে `[x]` মার্ক করো।
-> Last updated: 2026-08-06
+> Design source of truth: `docs/DESIGN_SYSTEM.md` + `docs/STT_Interactive_Prototype.html`
+> Last updated: 2026-08-07
 
 ## Phase 0 — Foundation
 
@@ -24,8 +25,9 @@
 - [x] `.env.local` with URL + keys (gitignored)
 - [x] `.env.example` committed (empty values)
 - [x] Auth core schema applied (orgs, profiles, roles, members + RLS)
-- [ ] Full schema.sql applied (Phase 1.1)
-- [ ] GitHub Secrets for CI (with 0.6)
+- [x] MVP schema applied (facilities, materials, wallets, TCs) — Phase 1.1
+- [ ] Remaining non-MVP schema (orders/DPP/risk/…) later phases
+- [ ] GitHub Secrets for CI (with deploy)
 
 ### Step 0.3 — Monorepo Structure
 - [x] Root `package.json` + workspaces / Turborepo
@@ -39,15 +41,18 @@
 
 ### Step 0.4 — Design System
 - [x] shadcn/ui init on `apps/web` (Tailwind v4)
-- [x] Brand colors (navy `#0A1628`, green `#00A651`)
+- [x] **Design guide locked** from interactive prototype → `docs/DESIGN_SYSTEM.md`
+- [x] Prototype archived → `docs/STT_Interactive_Prototype.html`
+- [x] Brand tokens synced (navy `#0E2A47`, green `#12A45B`, Sora/Inter/JetBrains Mono)
+- [x] Split login + navy sidebar shell matching prototype
 - [x] Base components: Button, Card, Input, Badge, Table
-- [x] Layout: Sidebar, Header, PageWrapper
+- [x] Layout: Sidebar (Operate/Assure/Decide), Header, PageWrapper
 
 ### Step 0.5 — Auth (Multi-tenant)
 - [x] Supabase clients (`@supabase/ssr`) in web
 - [x] Core tables + RLS (orgs, profiles, roles, members)
 - [x] Login / register pages + server actions
-- [x] Middleware auth redirect (protect app, allow `/login` `/register` `/p/*`)
+- [x] Middleware auth redirect
 - [x] Signup trigger creates `profiles` row
 - [ ] Org onboarding flow (Step 1.2)
 - [ ] Manual E2E login test in browser
@@ -57,12 +62,43 @@
 - [ ] Vercel deploy (web)
 - [ ] Railway deploy (api) — when api ready
 
-## Phase 1 — MVP (after Phase 0)
-- [ ] 1.1 Core DB schema (5 tables + remaining from schema.sql)
-- [ ] 1.2 Organization onboarding
-- [ ] 1.3 Facility declaration
-- [ ] 1.4 Material wallet
-- [ ] 1.5 TC issuance
-- [ ] 1.6 Brand dashboard
-- [ ] 1.7 Supplier dashboard
-- [ ] 1.8 Pilot testing
+## Phase 1 — MVP
+
+### Step 1.1 — Core Database Schema
+- [x] organizations, profiles, roles, organization_members
+- [x] facilities + declarations + supplier_relationships + supply_chain_tiers + certs
+- [x] materials (seeded) + material_wallets + wallet_balances + transactions + mass_balance
+- [x] transaction_certificates + line items + verifications + documents
+- [x] invitations
+- [x] RLS + wallet sync trigger + TC number generator
+- [ ] TypeScript types regen from live DB (optional polish)
+
+### Step 1.2 — Organization Onboarding
+- [ ] Registration chooses brand vs supplier
+- [ ] Create organization + link profile as owner
+- [ ] Assign default admin role
+- [ ] Onboarding checklist UI (5 phases from prototype)
+
+### Step 1.3 — Facility Declaration
+- [ ] Facility add form
+- [ ] Tier selection
+- [ ] Facility list
+
+### Step 1.4 — Material Wallet
+- [ ] Wallet dashboard
+- [ ] Credit / debit transactions
+- [ ] Mass balance view
+
+### Step 1.5 — TC Issuance
+- [ ] TC create + line items
+- [ ] Issue with balance check
+- [ ] PDF/QR later polish
+
+### Step 1.6 — Brand dashboard
+- [ ] Supply chain + TC list basics
+
+### Step 1.7 — Supplier dashboard
+- [ ] Wallet + TC shortcuts
+
+### Step 1.8 — Pilot testing
+- [ ] Real brand + suppliers pilot
