@@ -40,6 +40,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/login') || pathname.startsWith('/register');
   const isPublicRoute =
     isAuthRoute || pathname.startsWith('/p/') || pathname.startsWith('/api/');
+  const isOnboarding = pathname.startsWith('/onboarding');
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
@@ -52,6 +53,20 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);
+  }
+
+  if (user && !isPublicRoute && !isOnboarding) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!profile?.organization_id) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/onboarding';
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

@@ -15,7 +15,8 @@ const operate: NavItem[] = [
   { href: '/orders', label: 'Orders' },
   { href: '/materials', label: 'Materials' },
   { href: '/wallet', label: 'Material Wallet' },
-  { href: '/supply-chain', label: 'Supply Chain' },
+  { href: '/tc', label: 'TC Certificates' },
+  { href: '/facilities', label: 'Supply Chain' },
 ];
 
 const assure: NavItem[] = [

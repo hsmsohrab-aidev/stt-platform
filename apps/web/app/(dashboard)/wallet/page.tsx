@@ -1,0 +1,184 @@
+import { redirect } from 'next/navigation';
+import { CreditForm } from '@/app/(dashboard)/wallet/credit-form';
+import { PageWrapper } from '@/components/layout/page-wrapper';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { createClient } from '@/lib/supabase/server';
+
+function asMaterial(
+  value: unknown
+): { name: string; standard: string | null; material_type?: string } | null {
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    const first = value[0] as
+      | { name: string; standard: string | null; material_type?: string }
+      | undefined;
+    return first ?? null;
+  }
+  return value as { name: string; standard: string | null; material_type?: string };
+}
+
+export default async function WalletPage() {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!profile?.organization_id) redirect('/onboarding');
+
+  const { data: materials } = await supabase
+    .from('materials')
+    .select('id, name, standard')
+    .eq('is_active', true)
+    .order('name');
+
+  const { data: wallet } = await supabase
+    .from('material_wallets')
+    .select('id')
+    .eq('organization_id', profile.organization_id)
+    .is('facility_id', null)
+    .maybeSingle();
+
+  const { data: balances } = wallet
+    ? await supabase
+        .from('wallet_balances')
+        .select(
+          'id, balance_qty, reserved_qty, available_qty, unit, material_id, materials(name, standard, material_type)'
+        )
+        .eq('wallet_id', wallet.id)
+        .order('last_updated_at', { ascending: false })
+    : { data: [] };
+
+  const { data: txs } = wallet
+    ? await supabase
+        .from('material_transactions')
+        .select(
+          'id, transaction_type, quantity, unit, description, transaction_date, materials(name)'
+        )
+        .eq('wallet_id', wallet.id)
+        .order('created_at', { ascending: false })
+        .limit(12)
+    : { data: [] };
+
+  return (
+    <PageWrapper
+      title="Material Wallet"
+      description="Mass-balance ready · every credit/debit ledgered"
+    >
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {(balances ?? []).length === 0 ? (
+          <div className="rounded-xl border border-stt-line bg-white p-3.5 shadow-[var(--stt-shadow)] sm:col-span-2">
+            <div className="text-[10.5px] font-semibold text-stt-muted">Balances</div>
+            <div className="mt-1 font-display text-[18px] font-bold">No materials yet</div>
+            <p className="mt-1 text-[11px] text-stt-muted">
+              Credit an opening balance to activate the wallet.
+            </p>
+          </div>
+        ) : (
+          (balances ?? []).map((b) => {
+            const mat = asMaterial(b.materials);
+            return (
+              <div
+                key={b.id}
+                className="rounded-xl border border-stt-line bg-white p-3.5 shadow-[var(--stt-shadow)]"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10.5px] font-semibold text-stt-muted">
+                    {mat?.name ?? 'Material'}
+                  </span>
+                  {mat?.standard ? (
+                    <Badge className="rounded-full bg-stt-blue-soft text-stt-blue hover:bg-stt-blue-soft">
+                      {mat.standard}
+                    </Badge>
+                  ) : null}
+                </div>
+                <div className="mt-1 font-display text-[21px] font-bold text-stt-ink">
+                  {Number(b.available_qty).toLocaleString()}{' '}
+                  <span className="text-[11px] text-stt-muted">{b.unit}</span>
+                </div>
+                <div className="mt-1 text-[10.5px] text-stt-muted">
+                  Balance {Number(b.balance_qty).toLocaleString()} · Reserved{' '}
+                  {Number(b.reserved_qty).toLocaleString()}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="mt-3.5 grid gap-3.5 lg:grid-cols-[1.5fr_1fr]">
+        <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+          <div className="border-b border-stt-line px-4 py-3">
+            <h3 className="text-[12.5px] font-bold">Recent transactions</h3>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-[10px] uppercase text-stt-faint">Date</TableHead>
+                <TableHead className="text-[10px] uppercase text-stt-faint">Type</TableHead>
+                <TableHead className="text-[10px] uppercase text-stt-faint">Material</TableHead>
+                <TableHead className="text-[10px] uppercase text-stt-faint">Qty</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(txs ?? []).length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-[12px] text-stt-muted">
+                    No ledger entries yet.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                (txs ?? []).map((t) => {
+                  const mat = asMaterial(t.materials);
+                  return (
+                    <TableRow key={t.id}>
+                      <TableCell className="font-mono-stt text-[11px]">
+                        {t.transaction_date}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">
+                          {t.transaction_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-[12px]">{mat?.name ?? '—'}</TableCell>
+                      <TableCell className="font-mono-stt text-[11px]">
+                        {Number(t.quantity).toLocaleString()} {t.unit}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+          <div className="border-b border-stt-line px-4 py-3">
+            <h3 className="text-[12.5px] font-bold">Credit material</h3>
+          </div>
+          <div className="p-4">
+            <CreditForm materials={materials ?? []} />
+            <div className="mt-3 rounded-[9px] border border-[#F2C7C7] bg-stt-red-soft px-3 py-2 text-[11px] leading-relaxed text-[#A33]">
+              Ledger integrity: debits that exceed available balance are rejected by
+              the database trigger.
+            </div>
+          </div>
+        </div>
+      </div>
+    </PageWrapper>
+  );
+}
