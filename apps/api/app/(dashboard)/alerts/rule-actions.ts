@@ -15,7 +15,7 @@ export async function createAlertRuleAction(
 ): Promise<AlertRuleActionState> {
   const ctx = await requireSessionContext();
   const name = String(formData.get('name') ?? '').trim();
-  const module = String(formData.get('module') ?? '').trim() || 'risk';
+  const ruleModule = String(formData.get('module') ?? '').trim() || 'risk';
   const conditionType =
     String(formData.get('condition_type') ?? '').trim() || 'threshold';
   const severity = String(formData.get('severity') ?? '').trim() || 'medium';
@@ -29,7 +29,7 @@ export async function createAlertRuleAction(
     organization_id: ctx.organizationId,
     name,
     description,
-    module,
+    module: ruleModule,
     condition_type: conditionType,
     condition_config: {
       field:
