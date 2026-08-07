@@ -60,7 +60,7 @@ export default async function WalletPage() {
       .maybeSingle(),
   ]);
 
-  const [balancesResult, txsResult] = wallet
+  const [balancesResult, txsResult, mbResult] = wallet
     ? await Promise.all([
         supabase
           .from('wallet_balances')
@@ -77,11 +77,20 @@ export default async function WalletPage() {
           .eq('wallet_id', wallet.id)
           .order('created_at', { ascending: false })
           .limit(50),
+        supabase
+          .from('mass_balance_records')
+          .select(
+            'id, period_start, period_end, opening_balance, total_received, total_consumed, total_issued, closing_balance, is_balanced, materials(name)'
+          )
+          .eq('organization_id', ctx.organizationId)
+          .order('period_end', { ascending: false })
+          .limit(25),
       ])
-    : [{ data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }];
 
   const balances = balancesResult.data;
   const txs = txsResult.data;
+  const massBalances = mbResult.data;
 
   const creditTotal = (txs ?? [])
     .filter((t) => t.transaction_type === 'credit')
@@ -231,6 +240,69 @@ export default async function WalletPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mt-3.5 rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+        <div className="flex items-center border-b border-stt-line px-4 py-3">
+          <h3 className="text-[12.5px] font-bold">Mass-balance periods</h3>
+          <Badge className="ml-auto rounded-full bg-stt-green-soft text-stt-green-dark">
+            {(massBalances ?? []).length}
+          </Badge>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Material</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Period</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">In / Out</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Closing</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(massBalances ?? []).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-[12px] text-stt-muted">
+                  No mass-balance periods yet — credit wallet or issue TCs to sync.
+                </TableCell>
+              </TableRow>
+            ) : (
+              (massBalances ?? []).map((row) => {
+                const mat = asMaterial(row.materials);
+                return (
+                  <TableRow key={row.id} className="hover:bg-[#F7FAFC]">
+                    <TableCell className="text-[12px] font-semibold">
+                      {mat?.name ?? '—'}
+                    </TableCell>
+                    <TableCell className="font-mono-stt text-[11px]">
+                      {row.period_start} → {row.period_end}
+                    </TableCell>
+                    <TableCell className="font-mono-stt text-[11px]">
+                      +{Number(row.total_received ?? 0).toLocaleString()} / −
+                      {Number(
+                        (row.total_issued ?? 0) + (row.total_consumed ?? 0)
+                      ).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-mono-stt text-[11px]">
+                      {Number(row.closing_balance ?? 0).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={
+                          row.is_balanced
+                            ? 'rounded-full bg-stt-green-soft text-stt-green-dark'
+                            : 'rounded-full bg-stt-amber-soft text-stt-amber'
+                        }
+                      >
+                        {row.is_balanced ? 'Balanced' : 'Review'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
       </div>
     </PageWrapper>
   );

@@ -58,7 +58,8 @@ export default async function BrandDashboardPage() {
 
   const data = await loadBrandDashboardData(ctx);
 
-  const [{ data: orders }, { data: shipments }, { data: vrs }] = await Promise.all([
+  const [{ data: orders }, { data: shipments }, { data: vrs }, { data: auditRows }] =
+    await Promise.all([
     supabase
       .from('orders')
       .select(
@@ -81,7 +82,32 @@ export default async function BrandDashboardPage() {
       .eq('buyer_org_id', ctx.organizationId)
       .order('created_at', { ascending: false })
       .limit(25),
+    supabase
+      .from('audit_reports')
+      .select('id, request_id, overall_rating, is_published')
+      .eq('is_published', true)
+      .limit(80),
   ]);
+
+  const completedVrIds = (auditRows ?? [])
+    .filter(
+      (r) =>
+        r.overall_rating === 'pass' || r.overall_rating === 'pass_with_conditions'
+    )
+    .map((r) => r.request_id);
+
+  const { data: verifiedReqs } =
+    completedVrIds.length > 0
+      ? await supabase
+          .from('verification_requests')
+          .select('id, supplier_org_id')
+          .in('id', completedVrIds)
+          .eq('buyer_org_id', ctx.organizationId)
+      : { data: [] as { id: string; supplier_org_id: string }[] };
+
+  const verifiedSupplierIds = new Set(
+    (verifiedReqs ?? []).map((r) => r.supplier_org_id)
+  );
 
   const orderRows = orders ?? [];
   const shipmentRows = shipments ?? [];
@@ -143,13 +169,14 @@ export default async function BrandDashboardPage() {
                 <TableRow>
                   <TableHead className="text-[10px] uppercase text-stt-faint">Supplier</TableHead>
                   <TableHead className="text-[10px] uppercase text-stt-faint">Tier</TableHead>
+                  <TableHead className="text-[10px] uppercase text-stt-faint">Audit</TableHead>
                   <TableHead className="text-[10px] uppercase text-stt-faint">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.suppliers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-[12px] text-stt-muted">
+                    <TableCell colSpan={4} className="text-[12px] text-stt-muted">
                       No suppliers linked — use the form on the right.
                     </TableCell>
                   </TableRow>
@@ -157,6 +184,7 @@ export default async function BrandDashboardPage() {
                   data.suppliers.map((s) => {
                     const org = s.organizations;
                     const name = Array.isArray(org) ? org[0]?.name : org?.name;
+                    const audited = verifiedSupplierIds.has(s.supplier_org_id);
                     return (
                       <TableRow key={s.id} className="hover:bg-[#F7FAFC]">
                         <TableCell>
@@ -169,6 +197,17 @@ export default async function BrandDashboardPage() {
                         </TableCell>
                         <TableCell className="font-mono-stt text-[11px]">
                           {s.tier_level}
+                        </TableCell>
+                        <TableCell>
+                          {audited ? (
+                            <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">
+                              Audit verified
+                            </Badge>
+                          ) : (
+                            <Badge className="rounded-full bg-[#EDF1F6] text-stt-muted">
+                              Pending
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge className="rounded-full bg-stt-green-soft text-stt-green-dark">

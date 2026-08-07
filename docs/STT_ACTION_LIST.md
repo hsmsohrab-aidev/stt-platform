@@ -177,6 +177,8 @@ Status: `Todo` until you assign.
 ### Sprint 4 — “Depth”
 5. SC3 (if GIS approved) · W1–W5 · A4 · P3r  
 
+> **Done (2026-08-07):** ESPR DPP fields + public passport · audit attestation + Brand “Audit verified” badge · risk owner/due/note · compliance evidence links · wallet mass-balance periods · alert rules UI · report export history. **SC3 Leaflet deferred** (SVG maps remain).
+
 ### Backlog
 6. All P3 (E1–E6)
 

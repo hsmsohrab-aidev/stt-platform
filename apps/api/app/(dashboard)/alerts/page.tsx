@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { AlertRuleForm } from '@/app/(dashboard)/alerts/alert-rule-form';
+import { toggleAlertRuleAction } from '@/app/(dashboard)/alerts/rule-actions';
 import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
@@ -29,14 +31,24 @@ export default async function AlertsPage() {
   const ctx = await requireSessionContext();
   const supabase = createClient();
 
-  const { data: notifications } = await supabase
-    .from('notifications')
-    .select(
-      'id, title, body, severity, module, action_url, is_read, created_at, sent_at'
-    )
-    .eq('organization_id', ctx.organizationId)
-    .order('created_at', { ascending: false })
-    .limit(60);
+  const [{ data: notifications }, { data: rules }] = await Promise.all([
+    supabase
+      .from('notifications')
+      .select(
+        'id, title, body, severity, module, action_url, is_read, created_at, sent_at'
+      )
+      .eq('organization_id', ctx.organizationId)
+      .order('created_at', { ascending: false })
+      .limit(60),
+    supabase
+      .from('alert_rules')
+      .select(
+        'id, name, module, condition_type, condition_config, severity, is_active, created_at'
+      )
+      .eq('organization_id', ctx.organizationId)
+      .order('created_at', { ascending: false })
+      .limit(25),
+  ]);
 
   const rows = notifications ?? [];
   const unread = rows.filter((n) => !n.is_read).length;
@@ -76,7 +88,7 @@ export default async function AlertsPage() {
       <FilterBar
         items={[
           { label: 'Channel', value: 'In-app' },
-          { label: 'Window', value: 'Recent 60' },
+          { label: 'Rules', value: String((rules ?? []).length) },
           { label: 'Org', value: ctx.orgName.slice(0, 24) },
         ]}
       />
@@ -86,7 +98,11 @@ export default async function AlertsPage() {
           { label: 'Total alerts', value: rows.length },
           { label: 'Critical', value: critical },
           { label: 'High', value: high },
-          { label: 'Medium / low', value: medium + low, hint: `${unread} unread` },
+          {
+            label: 'Active rules',
+            value: (rules ?? []).filter((r) => r.is_active).length,
+            hint: `${medium + low} med/low · ${unread} unread`,
+          },
         ]}
       />
 
@@ -95,6 +111,78 @@ export default async function AlertsPage() {
         <DonutChart title="By category / module" data={moduleData} />
         <DonutChart title="By status" data={statusData} />
         <TrendChart title="Alerts over time" data={trend} color="#2D6CDF" />
+      </div>
+
+      <div className="mb-3.5 grid gap-3.5 lg:grid-cols-[1.2fr_1fr]">
+        <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">
+          <div className="border-b border-stt-line px-4 py-3">
+            <h3 className="text-[13.5px] font-bold">Alert rules</h3>
+            <p className="text-[11px] text-stt-muted">
+              Threshold rules for low wallet and cert expiry
+            </p>
+          </div>
+          <ul className="divide-y divide-stt-line">
+            {(rules ?? []).length === 0 ? (
+              <li className="px-4 py-5 text-[12px] text-stt-muted">
+                No rules yet — create one on the right.
+              </li>
+            ) : (
+              (rules ?? []).map((r) => {
+                const cfg = r.condition_config as {
+                  field?: string;
+                  operator?: string;
+                  value?: number;
+                } | null;
+                return (
+                  <li
+                    key={r.id}
+                    className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5"
+                  >
+                    <div>
+                      <div className="text-[12.5px] font-semibold text-stt-ink">
+                        {r.name}
+                      </div>
+                      <div className="font-mono-stt text-[10px] text-stt-faint">
+                        {r.module} · {r.condition_type}
+                        {cfg?.field
+                          ? ` · ${cfg.field} ${cfg.operator ?? ''} ${cfg.value ?? ''}`
+                          : ''}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={`rounded-full capitalize ${
+                          severityTone[r.severity] ?? severityTone.info
+                        }`}
+                      >
+                        {r.severity}
+                      </Badge>
+                      <form action={toggleAlertRuleAction}>
+                        <input type="hidden" name="rule_id" value={r.id} />
+                        <input
+                          type="hidden"
+                          name="next_active"
+                          value={r.is_active ? 'false' : 'true'}
+                        />
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          className="h-7 rounded-[9px] text-[11px]"
+                        >
+                          {r.is_active ? 'Disable' : 'Enable'}
+                        </Button>
+                      </form>
+                    </div>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+        <div className="rounded-xl border border-stt-line bg-white p-4 shadow-[var(--stt-shadow)]">
+          <h3 className="mb-3 text-[13.5px] font-bold">New rule</h3>
+          <AlertRuleForm />
+        </div>
       </div>
 
       <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">

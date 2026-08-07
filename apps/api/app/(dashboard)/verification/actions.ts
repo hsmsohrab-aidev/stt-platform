@@ -136,14 +136,23 @@ export async function completeVerificationAction(
   const rating = String(formData.get('overall_rating') ?? 'pass').trim();
   const score = Number(formData.get('score'));
   const summary = String(formData.get('findings_summary') ?? '').trim() || null;
+  const attested = String(formData.get('digital_attestation') ?? '') === '1';
 
   if (!assignmentId || !requestId) return { error: 'Missing assignment.' };
   if (!title) return { error: 'Report title is required.' };
+  if (!attested) return { error: 'Digital attestation is required to publish.' };
 
   const { supabase, organizationId, orgType } = await requireActionContext();
   if (orgType !== 'auditor' && orgType !== 'platform_admin') {
     return { error: 'Auditors only.' };
   }
+
+  const findingsWithSign = [
+    summary,
+    `[Digitally attested ${new Date().toISOString().slice(0, 10)} by auditor org ${organizationId.slice(0, 8)}]`,
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   const { error: reportError } = await supabase.from('audit_reports').insert({
     assignment_id: assignmentId,
@@ -151,7 +160,7 @@ export async function completeVerificationAction(
     report_title: title,
     overall_rating: rating,
     score: Number.isFinite(score) ? score : null,
-    findings_summary: summary,
+    findings_summary: findingsWithSign,
     is_published: true,
     published_at: new Date().toISOString(),
   });
@@ -203,6 +212,7 @@ export async function completeVerificationAction(
 
   revalidatePath('/verification');
   revalidatePath('/auditor');
+  revalidatePath('/brand');
   revalidatePath('/alerts');
-  return { error: null, success: 'Report published.' };
+  return { error: null, success: 'Report published · buyer notified.' };
 }

@@ -73,7 +73,7 @@ export default async function ReportsPage() {
   const orgId = ctx.organizationId;
   const risk = await loadOrgRiskSnapshot(orgId, ctx.orgType);
 
-  const [tcsRes, ordersRes, walletRes, facilitiesRes] = await Promise.all([
+  const [tcsRes, ordersRes, walletRes, facilitiesRes, historyRes] = await Promise.all([
     supabase
       .from('transaction_certificates')
       .select('id, tc_number, tc_status, total_quantity, quantity_unit, issue_date')
@@ -100,6 +100,12 @@ export default async function ReportsPage() {
       .from('facilities')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', orgId),
+    supabase
+      .from('generated_reports')
+      .select('id, report_type, title, format, generated_at')
+      .eq('organization_id', orgId)
+      .order('generated_at', { ascending: false })
+      .limit(20),
   ]);
 
   const wallet = walletRes.data;
@@ -113,6 +119,7 @@ export default async function ReportsPage() {
   const tcs = tcsRes.data ?? [];
   const orders = ordersRes.data ?? [];
   const facilityCount = facilitiesRes.count ?? 0;
+  const history = historyRes.data ?? [];
   const generatedAt = new Date().toLocaleString();
   const tcStatusData = countBy(tcs, (tc) => tc.tc_status ?? '—');
   const orderStatusData = countBy(orders, (o) => o.status ?? '—');
@@ -152,18 +159,24 @@ export default async function ReportsPage() {
             headers={['TC', 'Status', 'Qty', 'Unit', 'Issue date']}
             rows={tcCsvRows}
             label="Export TCs CSV"
+            reportType="tc"
+            reportTitle="Transaction certificate register"
           />
           <CsvExportButton
             filename={`stt-orders-${orgId.slice(0, 8)}`}
             headers={['Order', 'PO', 'Status', 'Qty', 'Unit']}
             rows={orderCsvRows}
             label="Export Orders CSV"
+            reportType="orders"
+            reportTitle="Order performance"
           />
           <CsvExportButton
             filename={`stt-risk-${orgId.slice(0, 8)}`}
             headers={['Severity', 'Kind', 'Title', 'Detail', 'Href']}
             rows={riskCsvRows}
             label="Export Risk CSV"
+            reportType="risk"
+            reportTitle="Enterprise risk summary"
           />
           <Button asChild variant="outline" className="h-8 rounded-[9px] text-xs">
             <Link href="/">Dashboard</Link>
@@ -184,7 +197,7 @@ export default async function ReportsPage() {
           { label: 'Report packs', value: CATALOG.length },
           { label: 'TCs in register', value: tcs.length },
           { label: 'Orders', value: orders.length },
-          { label: 'Open risk flags', value: risk.openFlagCount },
+          { label: 'History', value: history.length, hint: 'Exports logged' },
         ]}
       />
 
@@ -217,6 +230,46 @@ export default async function ReportsPage() {
             ))}
           </ul>
         </div>
+      </div>
+
+      <div className="mb-3.5 rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)] print:hidden">
+        <div className="border-b border-stt-line px-4 py-3">
+          <h3 className="text-[13.5px] font-bold">Recent report history</h3>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-[10px] uppercase text-stt-faint">When</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Title</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Type</TableHead>
+              <TableHead className="text-[10px] uppercase text-stt-faint">Format</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {history.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-[12px] text-stt-muted">
+                  No exports logged yet — use Export CSV buttons above.
+                </TableCell>
+              </TableRow>
+            ) : (
+              history.map((h) => (
+                <TableRow key={h.id}>
+                  <TableCell className="font-mono-stt text-[11px]">
+                    {new Date(h.generated_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-[12px] font-semibold">{h.title}</TableCell>
+                  <TableCell className="font-mono-stt text-[11px]">{h.report_type}</TableCell>
+                  <TableCell>
+                    <Badge className="rounded-full bg-[#EDF1F6] text-stt-muted">
+                      {h.format}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       <article id="ops-pack" className="space-y-3.5">

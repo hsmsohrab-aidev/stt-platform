@@ -143,6 +143,58 @@ export function CreatePassportForm() {
         />
       </div>
 
+      <div className="rounded-lg border border-stt-line bg-[#F8FAFC] p-3 space-y-3">
+        <div className="text-[10.5px] font-bold uppercase tracking-wide text-stt-navy">
+          ESPR completeness
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-[10.5px] font-semibold text-stt-muted">
+              Repairability score (0–100)
+            </label>
+            <Input
+              name="repairability_score"
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              placeholder="72"
+              className="h-9 rounded-lg text-xs"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10.5px] font-semibold text-stt-muted">
+              Chemicals (REACH / RSL)
+            </label>
+            <Input
+              name="chemical_compliance"
+              placeholder="OEKO-TEX · ZDHC MRSL Level 1"
+              className="h-9 rounded-lg text-xs"
+            />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10.5px] font-semibold text-stt-muted">
+            Recyclability
+          </label>
+          <Input
+            name="recyclability_info"
+            placeholder="Fiber-to-fiber recycling via partner take-back"
+            className="h-9 rounded-lg text-xs"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10.5px] font-semibold text-stt-muted">
+            End of life
+          </label>
+          <Input
+            name="end_of_life_instructions"
+            placeholder="Return to store · do not landfill"
+            className="h-9 rounded-lg text-xs"
+          />
+        </div>
+      </div>
+
       <SubmitButton />
     </form>
   );

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ComplianceEvidenceForm } from '@/app/(dashboard)/compliance/evidence-form';
 import {
   BarChart,
   DonutChart,
@@ -76,7 +77,8 @@ export default async function CompliancePage() {
   const supabase = createClient();
   const tasks = snapshot.flags.filter((f) => f.category === 'compliance');
 
-  const [{ data: certs }, { data: tcs }, { count: dppPublished }] = await Promise.all([
+  const [{ data: certs }, { data: tcs }, { count: dppPublished }, { data: uploadedEvidence }] =
+    await Promise.all([
     supabase
       .from('facility_certifications')
       .select('id, cert_name, expiry_date, is_verified, facility_id, created_at')
@@ -95,6 +97,12 @@ export default async function CompliancePage() {
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', ctx.organizationId)
       .eq('status', 'published'),
+    supabase
+      .from('compliance_evidence')
+      .select('id, title, url, related_module, notes, created_at')
+      .eq('organization_id', ctx.organizationId)
+      .order('created_at', { ascending: false })
+      .limit(25),
   ]);
 
   // Certs filtered to own facilities via RLS / join — also re-query by org facilities
@@ -315,13 +323,40 @@ export default async function CompliancePage() {
             <div className="border-b border-stt-line px-4 py-3">
               <h3 className="text-[13.5px] font-bold">Evidence vault</h3>
               <p className="mt-0.5 text-[11px] text-stt-muted">
-                Certs + TCs linked to compliance controls
+                Certs + TCs + attached links
               </p>
             </div>
             <ul className="divide-y divide-stt-line">
-              {evidence.length === 0 ? (
+              {(uploadedEvidence ?? []).map((e) => (
+                <li key={e.id} className="flex items-start justify-between gap-2 px-4 py-2.5">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Badge className="rounded-full bg-stt-purple-soft text-[10px] text-stt-purple">
+                        link
+                      </Badge>
+                      {e.url ? (
+                        <a
+                          href={e.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="truncate text-[12px] font-semibold text-stt-blue hover:underline"
+                        >
+                          {e.title}
+                        </a>
+                      ) : (
+                        <span className="text-[12px] font-semibold">{e.title}</span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 text-[10.5px] text-stt-muted">
+                      {e.related_module}
+                      {e.notes ? ` · ${e.notes}` : ''}
+                    </div>
+                  </div>
+                </li>
+              ))}
+              {evidence.length === 0 && (uploadedEvidence ?? []).length === 0 ? (
                 <li className="px-4 py-6 text-[12px] text-stt-muted">
-                  No evidence files yet — declare facilities and receive TCs.
+                  No evidence yet — attach a link below or receive TCs.
                 </li>
               ) : (
                 evidence.map((e) => (
@@ -344,6 +379,12 @@ export default async function CompliancePage() {
                 ))
               )}
             </ul>
+            <div className="border-t border-stt-line p-4">
+              <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-stt-faint">
+                Attach evidence
+              </h4>
+              <ComplianceEvidenceForm />
+            </div>
           </div>
 
           <div className="rounded-xl border border-stt-line bg-white shadow-[var(--stt-shadow)]">

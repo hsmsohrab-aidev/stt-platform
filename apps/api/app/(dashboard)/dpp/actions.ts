@@ -24,6 +24,13 @@ export async function createPassportAction(
   const water = Number(formData.get('water_usage_liters'));
   const chainStep = String(formData.get('chain_step') ?? '').trim();
   const care = String(formData.get('care_instructions') ?? '').trim() || null;
+  const repairability = Number(formData.get('repairability_score'));
+  const chemicals = String(formData.get('chemical_compliance') ?? '').trim();
+  const recyclability =
+    String(formData.get('recyclability_info') ?? '').trim() ||
+    'Return to partner store for fiber-to-fiber recycling.';
+  const endOfLife =
+    String(formData.get('end_of_life_instructions') ?? '').trim() || null;
 
   if (!productName) return { error: 'Product name is required.' };
 
@@ -54,7 +61,12 @@ export async function createPassportAction(
       carbon_footprint_kg: Number.isFinite(carbon) ? carbon : null,
       water_usage_liters: Number.isFinite(water) ? water : null,
       care_instructions: care ? { text: care } : null,
-      recyclability_info: 'Return to partner store for fiber-to-fiber recycling.',
+      recyclability_info: recyclability,
+      end_of_life_instructions: endOfLife,
+      repairability_score: Number.isFinite(repairability) ? repairability : null,
+      chemical_compliance: chemicals
+        ? { summary: chemicals, standards: chemicals.split('·').map((s) => s.trim()) }
+        : null,
       status: 'draft',
       created_by: userId,
     })

@@ -21,6 +21,8 @@ type PublicPassport = {
   care_instructions: { text?: string } | null;
   recyclability_info: string | null;
   end_of_life_instructions: string | null;
+  repairability_score: number | null;
+  chemical_compliance: { summary?: string; standards?: string[] } | null;
   published_at: string | null;
   supply_chain: {
     tier_level: string | null;
@@ -82,6 +84,15 @@ export default async function PublicPassportPage({
   const chain = Array.isArray(passport.supply_chain) ? passport.supply_chain : [];
   const linkedMats = Array.isArray(passport.materials) ? passport.materials : [];
   const care = passport.care_instructions?.text ?? null;
+  const chemicals =
+    passport.chemical_compliance?.summary ??
+    passport.chemical_compliance?.standards?.join(' · ') ??
+    null;
+  const recycleHint = passport.recyclability_info
+    ? passport.recyclability_info.length > 28
+      ? `${passport.recyclability_info.slice(0, 28)}…`
+      : passport.recyclability_info
+    : '—';
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#0F3B2E_0%,#081C33_340px,#F2F5F9_340px)] px-3.5 py-7 pb-16">
@@ -215,33 +226,61 @@ export default async function PublicPassportPage({
 
             <section className="grid grid-cols-3 gap-2">
               {[
-                ['💧', passport.water_usage_liters, 'water footprint', 'L'],
-                ['☁️', passport.carbon_footprint_kg, 'CO₂e per unit', 'kg'],
-                ['♻️', '94%', 'recyclable', ''],
-              ].map(([icon, value, label, unit]) => (
+                {
+                  label: 'water footprint',
+                  value: passport.water_usage_liters,
+                  unit: 'L',
+                },
+                {
+                  label: 'CO₂e per unit',
+                  value: passport.carbon_footprint_kg,
+                  unit: 'kg',
+                },
+                {
+                  label: 'repairability',
+                  value: passport.repairability_score,
+                  unit: '/100',
+                },
+              ].map((item) => (
                 <div
-                  key={String(label)}
+                  key={item.label}
                   className="rounded-[11px] border border-stt-line p-2.5 text-center"
                 >
-                  <div className="text-base">{icon}</div>
                   <div className="mt-0.5 font-display text-[15px] font-bold">
-                    {value ?? '—'}
-                    {value != null && unit ? (
-                      <span className="text-[10px] font-medium text-stt-muted"> {unit}</span>
+                    {item.value ?? '—'}
+                    {item.value != null && item.unit ? (
+                      <span className="text-[10px] font-medium text-stt-muted">
+                        {' '}
+                        {item.unit}
+                      </span>
                     ) : null}
                   </div>
-                  <div className="text-[9.5px] text-stt-muted">{label}</div>
+                  <div className="text-[9.5px] text-stt-muted">{item.label}</div>
                 </div>
               ))}
             </section>
 
-            <section>
-              <h2 className="mb-2 text-[12px] font-bold">🧼 Care & End of Life</h2>
+            <section className="rounded-[11px] border border-stt-line bg-[#F8FAFC] p-3">
+              <h2 className="mb-1.5 text-[12px] font-bold">ESPR · circularity</h2>
               <p className="text-[11.5px] leading-relaxed text-stt-muted">
-                {care ??
-                  passport.recyclability_info ??
-                  passport.end_of_life_instructions ??
-                  'Care details not provided.'}
+                <b>Recyclability:</b> {passport.recyclability_info ?? recycleHint}
+              </p>
+              {passport.end_of_life_instructions ? (
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-stt-muted">
+                  <b>End of life:</b> {passport.end_of_life_instructions}
+                </p>
+              ) : null}
+              {chemicals ? (
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-stt-muted">
+                  <b>Chemicals:</b> {chemicals}
+                </p>
+              ) : null}
+            </section>
+
+            <section>
+              <h2 className="mb-2 text-[12px] font-bold">Care instructions</h2>
+              <p className="text-[11.5px] leading-relaxed text-stt-muted">
+                {care ?? 'Care details not provided.'}
               </p>
             </section>
           </div>

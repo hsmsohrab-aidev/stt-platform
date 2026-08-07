@@ -89,6 +89,20 @@ export function CompleteVerificationForm({
         <Input name="findings_summary" className="h-9 rounded-lg text-xs" />
       </div>
 
+      <label className="flex items-start gap-2 rounded-lg border border-stt-line bg-[#F8FAFC] px-3 py-2 text-[11px] leading-relaxed text-stt-ink">
+        <input
+          type="checkbox"
+          name="digital_attestation"
+          value="1"
+          required
+          className="mt-0.5"
+        />
+        <span>
+          I digitally attest this report is accurate and authorize publish for the
+          buyer (verified badge).
+        </span>
+      </label>
+
       <SubmitButton />
     </form>
   );

@@ -77,16 +77,24 @@ export default async function RiskHubPage() {
       .eq('status', 'active'),
     supabase
       .from('risk_flag_states')
-      .select('flag_key, status')
+      .select('flag_key, status, note, owner_name, due_date')
       .eq('organization_id', ctx.organizationId),
   ]);
 
-  const statusByFlag = new Map(
-    (flagStates ?? []).map((s) => [s.flag_key, s.status as 'open' | 'in_progress' | 'closed'])
+  const stateByFlag = new Map(
+    (flagStates ?? []).map((s) => [
+      s.flag_key,
+      {
+        status: (s.status as 'open' | 'in_progress' | 'closed') ?? 'open',
+        note: s.note ?? '',
+        ownerName: s.owner_name ?? '',
+        dueDate: s.due_date ?? '',
+      },
+    ])
   );
 
   const openFlags = snapshot.flags.filter(
-    (f) => (statusByFlag.get(f.id) ?? 'open') !== 'closed'
+    (f) => (stateByFlag.get(f.id)?.status ?? 'open') !== 'closed'
   );
   const criticalCount = openFlags.filter((f) => f.severity === 'critical').length;
   const monitored =
@@ -112,7 +120,7 @@ export default async function RiskHubPage() {
   const severityData = countBy(openFlags, (f) => f.severity);
   const mitigationData = countBy(
     snapshot.flags.map((f) => ({
-      status: statusByFlag.get(f.id) ?? 'open',
+      status: stateByFlag.get(f.id)?.status ?? 'open',
     })),
     (x) => x.status
   );
@@ -204,7 +212,8 @@ export default async function RiskHubPage() {
               </TableRow>
             ) : (
               snapshot.flags.map((f) => {
-                const mitigation = statusByFlag.get(f.id) ?? 'open';
+                const state = stateByFlag.get(f.id);
+                const mitigation = state?.status ?? 'open';
                 return (
                   <TableRow key={f.id} className="hover:bg-[#F7FAFC]">
                     <TableCell>
@@ -232,9 +241,21 @@ export default async function RiskHubPage() {
                       >
                         {mitigation.replace(/_/g, ' ')}
                       </Badge>
+                      {state?.ownerName ? (
+                        <div className="mt-1 text-[10px] text-stt-muted">
+                          Owner: {state.ownerName}
+                          {state.dueDate ? ` · due ${state.dueDate}` : ''}
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell>
-                      <RiskMitigationControl flagKey={f.id} status={mitigation} />
+                      <RiskMitigationControl
+                        flagKey={f.id}
+                        status={mitigation}
+                        note={state?.note}
+                        ownerName={state?.ownerName}
+                        dueDate={state?.dueDate}
+                      />
                     </TableCell>
                     <TableCell>
                       <Link
@@ -254,8 +275,7 @@ export default async function RiskHubPage() {
 
       <p className="mt-3.5 rounded-[9px] border border-[#CCDCF9] bg-stt-blue-soft px-3 py-2.5 text-[11px] leading-relaxed text-[#1E4FA8]">
         Risk score {snapshot.riskScore} · compliance score {snapshot.complianceScore}.
-        Mitigation status persists per flag (open / in progress / closed). Owners and
-        due dates ship in a later workflow pass.
+        Mitigation status, owner, due date, and notes persist per flag.
       </p>
     </PageWrapper>
   );

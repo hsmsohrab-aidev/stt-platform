@@ -21,7 +21,7 @@ export default async function DppDetailPage({ params }: PageProps) {
   const { data: passport } = await supabase
     .from('product_passports')
     .select(
-      'id, product_name, product_sku, product_category, status, published_at, country_of_origin, material_composition, carbon_footprint_kg, water_usage_liters, care_instructions, public_url'
+      'id, product_name, product_sku, product_category, status, published_at, country_of_origin, material_composition, carbon_footprint_kg, water_usage_liters, care_instructions, recyclability_info, end_of_life_instructions, repairability_score, chemical_compliance, public_url'
     )
     .eq('id', params.id)
     .eq('organization_id', ctx.organizationId)
@@ -190,6 +190,43 @@ export default async function DppDetailPage({ params }: PageProps) {
             </div>
             {care ? (
               <p className="mt-3 text-[11.5px] text-stt-muted">{care}</p>
+            ) : null}
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="rounded-lg border border-stt-line bg-[#F8FAFC] px-3 py-2">
+                <div className="text-[10px] font-semibold uppercase text-stt-faint">
+                  Repairability
+                </div>
+                <div className="font-mono-stt text-[13px] font-semibold">
+                  {passport.repairability_score != null
+                    ? `${passport.repairability_score}/100`
+                    : '—'}
+                </div>
+              </div>
+              <div className="rounded-lg border border-stt-line bg-[#F8FAFC] px-3 py-2">
+                <div className="text-[10px] font-semibold uppercase text-stt-faint">
+                  Chemicals
+                </div>
+                <div className="text-[12px]">
+                  {passport.chemical_compliance &&
+                  typeof passport.chemical_compliance === 'object' &&
+                  'summary' in (passport.chemical_compliance as object)
+                    ? String(
+                        (passport.chemical_compliance as { summary?: string }).summary ??
+                          '—'
+                      )
+                    : '—'}
+                </div>
+              </div>
+            </div>
+            {passport.recyclability_info ? (
+              <p className="mt-2 text-[11.5px] text-stt-muted">
+                <b>Recyclability:</b> {passport.recyclability_info}
+              </p>
+            ) : null}
+            {passport.end_of_life_instructions ? (
+              <p className="mt-1 text-[11.5px] text-stt-muted">
+                <b>End of life:</b> {passport.end_of_life_instructions}
+              </p>
             ) : null}
           </div>
 
