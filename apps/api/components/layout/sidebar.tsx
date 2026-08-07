@@ -12,7 +12,6 @@ type NavItem = {
 
 const operate: NavItem[] = [
   { href: '/', label: 'Dashboard' },
-  { href: '/demo-data', label: 'Demo Data' },
   { href: '/brand', label: 'Brand hub' },
   { href: '/supplier', label: 'Supplier hub' },
   { href: '/auditor', label: 'Auditor hub' },
@@ -38,6 +37,8 @@ const decide: NavItem[] = [
   { href: '/alerts', label: 'Alerts' },
   { href: '/membership', label: 'Membership' },
 ];
+
+const demoData: NavItem = { href: '/demo-data', label: 'Demo Data' };
 
 function NavSection({
   title,
@@ -105,6 +106,21 @@ export function Sidebar({ className }: SidebarProps) {
       <NavSection title="Operate" items={operate} pathname={pathname} />
       <NavSection title="Assure" items={assure} pathname={pathname} />
       <NavSection title="Decide" items={decide} pathname={pathname} />
+
+      <div className="mt-auto border-t border-white/10 pt-2">
+        <Link
+          href={demoData.href}
+          prefetch={false}
+          className={cn(
+            'relative z-10 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition',
+            pathname.startsWith(demoData.href)
+              ? 'bg-stt-green text-white'
+              : 'text-[#A9BCD1] hover:bg-white/10 hover:text-white'
+          )}
+        >
+          <span className="flex-1">{demoData.label}</span>
+        </Link>
+      </div>
     </aside>
   );
 }
